@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Layout: fixed sidebar + scrolling main pane; navy chrome, cool grey canvas, royal-blue actions, purple accent */
+:root {
+  --bg: #f6f7fa;
+  --fg: #141924;
+  --accent: #2552e0;
+  --chrome: #070f22;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: "Manrope", "IBM Plex Sans", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
+/* the app's own theme toggle wins over both */
+html:root.dark { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
+html:root.light { --bg: #f6f7fa; --fg: #141924; --accent: #2552e0; color-scheme: light; }
+
+html, body, #root { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { text-wrap: balance; }
+::selection { background: rgba(59, 108, 246, 0.22); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

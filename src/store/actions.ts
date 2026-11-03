@@ -1,0 +1,439 @@
+import { useApp } from './AppStore';
+import { buildSnapshot, isAfterDeadline, reportFor, trainerName } from './selectors';
+import type { DailyReport } from '../types';
+import { fmtDate, nowTs, uid } from '../utils';
+
+export function useReportActions() {
+  const { raw, user, mutate, notify, toast } = useApp();
+  const actor = user?.name ?? 'System';
+  const trainerUserId = (tid: string) => raw.users.find((u) => u.trainerId === tid)?.id;
+  const reviewers = () => raw.users.filter((u) => u.role === 'admin' && u.active && u.canReview).map((u) => u.id);
+
+  const ensure = (d: typeof raw, tid: string, date: string): DailyReport => {
+    let r = d.reports.find((x) => x.trainerId === tid && x.date === date);
+    if (!r) {
+      r = { id: uid('rep'), trainerId: tid, date, status: 'Draft', draftRemarks: '', versions: [], events: [], adminRemarks: [] };
+      d.reports.push(r);
+    }
+    return r;
+  };
+
+  return {
+    saveDraft(tid: string, date: string, remarks: string, exception?: string) {
+      mutate((d) => {
+        const r = ensure(d, tid, date);
+        r.draftRemarks = remarks;
+        if (exception !== undefined) r.exception = exception || undefined;
+        if (r.status === 'Draft') r.events.push({ at: nowTs(), by: actor, action: 'Draft saved' });
+        else r.events.push({ at: nowTs(), by: actor, action: 'Correction draft saved' });
+      });
+      toast('Draft saved');
+    },
+    submit(tid: string, date: string, remarks: string, exception?: string) {
+      const existing = reportFor(raw, tid, date);
+      // one consolidated report per trainer per working day: block duplicate submissions
+      if (existing && ['Submitted', 'Under Review', 'Approved', 'Rejected'].includes(existing.status)) {
+        toast(`A report for ${fmtDate(date)} is already ${existing.status.toLowerCase()}. Corrections go through a correction request.`, 'error');
+        return;
+      }
+      if (user?.role !== 'trainer' || user.trainerId !== tid) { toast('You can only submit your own report.', 'error'); return; }
+      const snapBase = buildSnapshot(raw, tid, date);
+      const snapshot = { ...snapBase, remarks, exception: exception || undefined };
+      const late = isAfterDeadline(raw, date);
+      const version = (existing?.versions.length ?? 0) + 1;
+      const resubmit = version > 1;
+      const reportId = existing?.id ?? uid('rep');
+      mutate((d) => {
+        let r = d.reports.find((x) => x.trainerId === tid && x.date === date);
+        if (!r) { r = { id: reportId, trainerId: tid, date, status: 'Draft', draftRemarks: '', versions: [], events: [], adminRemarks: [] }; d.reports.push(r); }
+        r.draftRemarks = remarks;
+        r.exception = exception || undefined;
+        r.versions.push({ version, submittedAt: nowTs(), late, snapshot });
+        r.status = 'Submitted';
+        r.events.push({ at: nowTs(), by: actor, action: `${resubmit ? 'Resubmitted' : 'Submitted'} v${version}${late ? ' (late)' : ''}`, reason: exception ? `Exception: ${exception}` : undefined });
+      }, { action: resubmit ? 'Report resubmitted' : 'Report submitted', entity: `Daily report ${fmtDate(date)} · ${trainerName(raw, tid)}`, prev: existing?.status ?? 'Draft', next: `Submitted v${version}`, reason: exception ?? '' });
+      notify(reviewers(), {
+        type: 'report-submitted',
+        title: resubmit ? 'Corrected report resubmitted' : 'Daily report submitted',
+        body: `${trainerName(raw, tid)} ${resubmit ? 'resubmitted' : 'submitted'} the report for ${fmtDate(date)} · ${snapshot.batches.length} batch${snapshot.batches.length === 1 ? '' : 'es'}${late ? ' · after the deadline' : ''}.`,
+        link: { page: 'report', id: reportId },
+      });
+      toast(`Report ${resubmit ? 'resubmitted' : 'submitted'}. ${reviewers().length} reviewing admins notified.`);
+    },
+    openForReview(id: string) {
+      const r = raw.reports.find((x) => x.id === id);
+      if (!r || r.status !== 'Submitted' || user?.role !== 'admin') return;
+      mutate((d) => {
+        const x = d.reports.find((y) => y.id === id)!;
+        x.status = 'Under Review';
+        x.events.push({ at: nowTs(), by: actor, action: 'Opened for review' });
+      });
+    },
+    approve(id: string, remark: string) {
+      const r = raw.reports.find((x) => x.id === id)!;
+      mutate((d) => {
+        const x = d.reports.find((y) => y.id === id)!;
+        x.status = 'Approved';
+        x.events.push({ at: nowTs(), by: actor, action: 'Approved', reason: remark || undefined });
+        if (remark) x.adminRemarks.push({ at: nowTs(), by: actor, text: remark });
+      }, { action: 'Report approved', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Approved', reason: remark });
+      const tu = trainerUserId(r.trainerId);
+      if (tu) notify([tu], { type: 'approved', title: 'Report approved', body: `${actor} approved your report for ${fmtDate(r.date)}.`, link: { page: 't-history' } });
+      toast('Report approved and trainer notified');
+    },
+    requestCorrection(id: string, reason: string) {
+      const r = raw.reports.find((x) => x.id === id)!;
+      mutate((d) => {
+        const x = d.reports.find((y) => y.id === id)!;
+        x.status = 'Correction Requested';
+        x.events.push({ at: nowTs(), by: actor, action: 'Correction requested', reason });
+      }, { action: 'Correction requested', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Correction Requested', reason });
+      const tu = trainerUserId(r.trainerId);
+      if (tu) notify([tu], { type: 'correction', title: 'Correction requested', body: `${actor}: ${reason}`, link: { page: 't-report', id: r.date } });
+      toast('Correction requested. The trainer can now edit and resubmit.', 'info');
+    },
+    reject(id: string, reason: string) {
+      const r = raw.reports.find((x) => x.id === id)!;
+      mutate((d) => {
+        const x = d.reports.find((y) => y.id === id)!;
+        x.status = 'Rejected';
+        x.events.push({ at: nowTs(), by: actor, action: 'Rejected', reason });
+      }, { action: 'Report rejected', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Rejected', reason });
+      const tu = trainerUserId(r.trainerId);
+      if (tu) notify([tu], { type: 'rejected', title: 'Report rejected', body: `${actor}: ${reason}`, link: { page: 't-history' } });
+      toast('Report rejected. History preserved.', 'warning');
+    },
+    addRemark(id: string, text: string) {
+      mutate((d) => {
+        const x = d.reports.find((y) => y.id === id)!;
+        x.adminRemarks.push({ at: nowTs(), by: actor, text });
+        x.events.push({ at: nowTs(), by: actor, action: 'Remark added', reason: text });
+      });
+      toast('Remark added');
+    },
+  };
+}
+
+import type { AppState, AttMark, BatchReport, TopicStatus } from '../types';
+import { classBatchesOn, isDayLocked, lessonPlan, topicDay } from './selectors';
+
+export interface BatchReportForm {
+  topics: Record<string, { status: TopicStatus | ''; reason: string }>;
+  marks: Record<string, AttMark | ''>;
+  reasons: Record<string, string>;
+  lateTimes: Record<string, string>;
+  practicals: BatchReport['practicals'];
+  assignments: BatchReport['assignments'];
+  doubts: BatchReport['doubts'];
+  voiceNames: BatchReport['voiceNames'];
+  projects: BatchReport['projects'];
+  remarks: string;
+}
+
+/** shared validation — used by the form and re-run inside the submit action */
+export const validateBatchForm = (s: AppState, batchId: string, f: BatchReportForm) => {
+  const e: Record<string, string> = {};
+  const studs = s.students.filter((x) => x.batchId === batchId && x.status === 'Active');
+  const topicMissing = Object.values(f.topics).filter((t) => !t.status).length;
+  const reasonMissing = Object.values(f.topics).filter((t) => t.status && t.status !== 'Completed' && t.reason.trim().length < 5).length;
+  if (topicMissing) e.topics = `${topicMissing} topic(s) have no status.`;
+  else if (reasonMissing) e.topics = `${reasonMissing} partially completed / not covered topic(s) need a reason.`;
+  const unmarked = studs.filter((st) => !f.marks[st.id]).length;
+  const noReason = studs.filter((st) => (f.marks[st.id] === 'Absent' || f.marks[st.id] === 'Leave') && !(f.reasons[st.id] ?? '').trim()).length;
+  const noTime = studs.filter((st) => f.marks[st.id] === 'Late' && !f.lateTimes[st.id]).length;
+  if (unmarked) e.attendance = `${unmarked} student(s) not marked.`;
+  else if (noReason) e.attendance = `${noReason} absent / leave student(s) need a reason.`;
+  else if (noTime) e.attendance = `${noTime} late student(s) need an arrival time.`;
+  if (!f.practicals.some((p) => p.text.trim())) e.practicals = 'Add at least one practical activity.';
+  if (f.assignments.some((a) => !a.name.trim() || !a.deadline)) e.assignments = 'Each assignment needs a name and a deadline.';
+  if (f.projects.some((p) => !p.name.trim())) e.projects = 'Each project entry needs a project name.';
+  if (s.settings.requireVoiceNote && !f.voiceNames.some((v) => v.text.trim())) e.voiceNames = 'Add at least one WhatsApp voice note name.';
+  return e;
+};
+
+export function useBatchReportActions() {
+  const { raw, user, mutate, toast } = useApp();
+  const actor = user?.name ?? 'System';
+  const persist = (batchId: string, date: string, f: BatchReportForm, submit: boolean) => {
+    const tid = user?.trainerId;
+    const b = raw.batches.find((x) => x.id === batchId);
+    // authorization: only the assigned trainer, only for a batch with class that day, only while the day is open
+    if (!tid || !b || b.trainerId !== tid) { toast('You can only report on batches assigned to you.', 'error'); return false; }
+    if (!classBatchesOn(raw, tid, date).some((x) => x.id === batchId)) { toast('This batch has no class on that date.', 'error'); return false; }
+    if (isDayLocked(raw, tid, date)) { toast('This day\'s consolidated report is locked.', 'error'); return false; }
+    if (submit && !lessonPlan(raw, b, date).selected) { toast(`Select the lesson day taught in ${b.name} (Today's Lesson) before submitting.`, 'error'); return false; }
+    if (submit && Object.keys(validateBatchForm(raw, batchId, f)).length) { toast('Complete the highlighted sections first.', 'error'); return false; }
+    const plan = lessonPlan(raw, b, date);
+    const topicByKey = new Map([...plan.carryOver.map((c) => c.topic), ...plan.topics].map((t) => [t.key, t]));
+    const prev = raw.batchReports.find((r) => r.trainerId === tid && r.batchId === batchId && r.date === date);
+    const att = raw.attendance.find((a) => a.batchId === batchId && a.date === date);
+    const ts = nowTs();
+    mutate((d) => {
+      // 1. topic progress (shared with Today's Lesson / Topic Progress pages)
+      Object.entries(f.topics).forEach(([key, t]) => {
+        if (!t.status || !topicByKey.has(key)) return;
+        let r = d.progress.find((p) => p.batchId === batchId && p.topicKey === key && p.date === date);
+        if (!r) { r = { id: uid('tp'), batchId, topicKey: key, date, status: t.status, minutes: 0, explanation: '', reason: '', practical: false, understanding: '', doubts: '', updatedAt: ts }; d.progress.push(r); }
+        if (r.status !== t.status || r.reason !== t.reason) { r.status = t.status; r.reason = t.status === 'Completed' ? '' : t.reason.trim(); r.updatedAt = ts; r.trainerId = tid; r.updatedBy = actor; const td = topicDay(raw, b, key); r.syllabusDayId = td?.syllabusDayId; r.dayNumber = td?.dayNumber; }
+      });
+      // 2. attendance (one session per batch per date; marks are frozen once submitted)
+      let a = d.attendance.find((x) => x.batchId === batchId && x.date === date);
+      if (!a) { a = { id: uid('att'), batchId, date, status: 'Draft', marks: {}, corrections: [] }; d.attendance.push(a); }
+      if (a.status !== 'Submitted') a.marks = Object.fromEntries(Object.entries(f.marks).filter(([, m]) => m)) as Record<string, AttMark>;
+      a.reasons = { ...f.reasons };
+      a.lateTimes = { ...f.lateTimes };
+      if (submit && a.status !== 'Submitted') { a.status = 'Submitted'; a.submittedAt = ts; a.submittedBy = actor; }
+      // 3. the batch report itself
+      let r = d.batchReports.find((x) => x.trainerId === tid && x.batchId === batchId && x.date === date);
+      if (!r) { r = { id: uid('br'), trainerId: tid, batchId, date, status: 'Draft', practicals: [], assignments: [], doubts: [], voiceNames: [], projects: [], remarks: '', createdAt: ts, updatedAt: ts, history: [] }; d.batchReports.push(r); }
+      const clean = <T extends { id: string }>(xs: T[], keep: (x: T) => boolean) => xs.filter(keep);
+      r.practicals = clean(f.practicals, (x) => !!x.text.trim());
+      r.assignments = clean(f.assignments, (x) => !!x.name.trim());
+      r.doubts = clean(f.doubts, (x) => !!x.text.trim());
+      r.voiceNames = clean(f.voiceNames, (x) => !!x.text.trim());
+      r.projects = clean(f.projects, (x) => !!x.name.trim());
+      r.remarks = f.remarks;
+      r.updatedAt = ts;
+      if (submit) { r.status = 'Submitted'; r.submittedAt = ts; }
+      r.history.push({ at: ts, by: actor, action: submit ? (prev?.status === 'Submitted' ? 'Batch report resubmitted' : 'Batch report submitted') : 'Draft saved' });
+      // 4. keep the daily activity log in sync so existing admin views keep working
+      if (submit) {
+        const pending = Object.entries(f.topics).filter(([, t]) => t.status && t.status !== 'Completed').map(([k]) => topicByKey.get(k)?.title).filter(Boolean);
+        const act = d.activities.find((x) => x.trainerId === tid && x.batchId === batchId && x.date === date);
+        const rec = {
+          practicals: r.practicals.map((p) => p.text).join('; '),
+          assignments: r.assignments.map((x) => x.name).join('; '),
+          homework: r.assignments.map((x) => `${x.name}: ${x.description} (due ${x.deadline})`).join('; '),
+          doubts: r.doubts.map((x) => x.text).join('; '),
+          supportStudents: act?.supportStudents ?? '',
+          feedback: r.remarks,
+          nextPlan: pending.length ? `Carry forward: ${pending.join(', ')}; then continue syllabus` : 'Continue with the next day of the syllabus',
+        };
+        if (act) Object.assign(act, rec); else d.activities.push({ id: uid('act'), trainerId: tid, batchId, date, ...rec });
+      }
+    }, submit ? { action: prev?.status === 'Submitted' ? 'Batch report resubmitted' : 'Batch report submitted', entity: `${b.name} · ${fmtDate(date)}`, prev: prev?.status ?? 'Not started', next: 'Submitted', reason: att?.status === 'Submitted' ? '' : 'Attendance submitted with batch report' } : undefined);
+    toast(submit ? `Batch report for ${b.name} submitted` : `Draft saved for ${b.name}`);
+    return true;
+  };
+  return {
+    saveDraft: (batchId: string, date: string, f: BatchReportForm) => persist(batchId, date, f, false),
+    submit: (batchId: string, date: string, f: BatchReportForm) => persist(batchId, date, f, true),
+    reopen(batchId: string, date: string) {
+      const tid = user?.trainerId;
+      if (!tid || isDayLocked(raw, tid, date)) return;
+      const b = raw.batches.find((x) => x.id === batchId);
+      mutate((d) => {
+        const r = d.batchReports.find((x) => x.trainerId === tid && x.batchId === batchId && x.date === date);
+        if (r) { r.status = 'Draft'; r.history.push({ at: nowTs(), by: actor, action: 'Reopened for editing' }); }
+      }, { action: 'Batch report reopened', entity: `${b?.name} · ${fmtDate(date)}`, prev: 'Submitted', next: 'Draft', reason: '' });
+      toast('Batch report reopened. Submit it again when you are done.', 'info');
+    },
+  };
+}
+
+/* ---------- Notes of Lesson ---------- */
+import type { NolDay, NolDayContent, NotesOfLesson, SyllabusVersion } from '../types';
+import type { ParsedNotes } from '../utils/nolParser';
+import { putFile } from '../utils/fileStore';
+
+export const nolIssues = (n: NotesOfLesson) => {
+  const out: string[] = [];
+  if (!n.days.length) out.push('There are no lesson days.');
+  n.days.forEach((d) => {
+    if (!d.title.trim()) out.push(`Day ${d.dayNumber}: title is empty.`);
+    if (!d.topics.filter((x) => x.trim()).length) out.push(`Day ${d.dayNumber}: no Topics to Cover.`);
+    if (!d.objectives.filter((x) => x.trim()).length) out.push(`Day ${d.dayNumber}: no Learning Objectives.`);
+    if (d.tasks.filter((x) => x.trim()).length !== 5) out.push(`Day ${d.dayNumber}: has ${d.tasks.filter((x) => x.trim()).length} student tasks; 5 are required.`);
+  });
+  const nums = n.days.map((d) => d.dayNumber);
+  nums.forEach((x, i) => nums.indexOf(x) !== i && out.push(`Day ${x} appears more than once.`));
+  return [...new Set(out)];
+};
+
+export function useNolActions() {
+  const { raw, user, mutate, notify, toast } = useApp();
+  const actor = user?.name ?? 'System';
+  const isAdmin = user?.role === 'admin';
+  const deny = () => { toast('Only admins can change Notes of Lesson.', 'error'); return false; };
+  const nextVersion = (courseId: string) => Math.max(0, ...raw.nols.filter((n) => n.courseId === courseId).map((n) => n.version)) + 1;
+  const editDraft = (nolId: string, fn: (n: NotesOfLesson) => void, audit?: { action: string; prev: string; next: string }) => {
+    if (!isAdmin) return deny();
+    const n0 = raw.nols.find((x) => x.id === nolId);
+    if (!n0 || n0.status !== 'Draft') { toast('Published notes are read-only. Create a revision to edit.', 'error'); return false; }
+    mutate((d) => { const n = d.nols.find((x) => x.id === nolId)!; fn(n); }, audit ? { ...audit, entity: `${raw.courses.find((c) => c.id === n0.courseId)?.name} NoL v${n0.version}`, reason: '' } : undefined);
+    return true;
+  };
+
+  return {
+    importParsed(courseId: string, parsed: ParsedNotes, kind: 'pdf' | 'excel', file: { name: string; size: number; mime: string; bytes: Uint8Array; pages?: number }) {
+      if (!isAdmin) return deny() && '';
+      const id = uid('NOL');
+      const fid = uid('F');
+      const stored = putFile(fid, file.bytes);
+      const version = nextVersion(courseId);
+      const days: NolDay[] = parsed.days.map((d) => {
+        const content: NolDayContent = { title: d.title, topics: [...d.topics], objectives: [...d.objectives], tasks: [...d.tasks] };
+        return { id: uid('nd'), dayNumber: d.dayNumber, ...content, original: content, warnings: d.warnings, page: d.page };
+      });
+      mutate((dr) => {
+        dr.files.push({ id: fid, name: file.name, size: file.size, mime: file.mime, courseId, nolId: id, pages: file.pages, uploadedAt: nowTs(), uploadedBy: actor });
+        dr.nols.push({ id, courseId, version, title: parsed.title || file.name.replace(/\.[^.]+$/, ''), duration: parsed.duration, status: 'Draft', sourceKind: kind, sourceFileId: fid, days, warnings: [...parsed.warnings, ...parsed.unrecognised.slice(0, 20)], createdAt: nowTs(), createdBy: actor, history: [{ at: nowTs(), by: actor, action: `Uploaded ${file.name} and extracted ${days.length} day(s)` }] });
+      }, { action: `Notes of Lesson uploaded (${kind.toUpperCase()})`, entity: raw.courses.find((c) => c.id === courseId)?.name ?? courseId, prev: '—', next: `Draft v${version} · ${days.length} days`, reason: file.name });
+      if (!stored) toast('The original file is larger than browser storage allows; it stays available until you reload.', 'warning');
+      return id;
+    },
+    createDraft(courseId: string, fromId?: string) {
+      if (!isAdmin) return deny() && '';
+      const src = fromId ? raw.nols.find((n) => n.id === fromId) : undefined;
+      const id = uid('NOL');
+      const version = nextVersion(courseId);
+      mutate((d) => {
+        d.nols.push({
+          id, courseId, version, title: src?.title ?? `${raw.courses.find((c) => c.id === courseId)?.name} – Notes of Lesson`, duration: src?.duration ?? '', status: 'Draft', sourceKind: src?.sourceKind ?? 'manual', sourceFileId: src?.sourceFileId,
+          days: (src?.days ?? []).map((x) => ({ ...JSON.parse(JSON.stringify(x)), id: uid('nd'), syllabusDayId: undefined })), warnings: [], createdAt: nowTs(), createdBy: actor,
+          history: [{ at: nowTs(), by: actor, action: src ? `Revision created from v${src.version}` : 'Created for manual entry' }],
+        });
+      }, { action: 'Notes of Lesson draft created', entity: raw.courses.find((c) => c.id === courseId)?.name ?? courseId, prev: src ? `v${src.version}` : '—', next: `Draft v${version}`, reason: '' });
+      return id;
+    },
+    updateDay: (nolId: string, dayId: string, patch: Partial<NolDayContent>) => editDraft(nolId, (n) => { Object.assign(n.days.find((x) => x.id === dayId)!, patch); }),
+    restoreDay: (nolId: string, dayId: string) => editDraft(nolId, (n) => { const d = n.days.find((x) => x.id === dayId)!; if (d.original) Object.assign(d, JSON.parse(JSON.stringify(d.original))); }),
+    addDay(nolId: string) {
+      return editDraft(nolId, (n) => { const num = Math.max(0, ...n.days.map((x) => x.dayNumber)) + 1; n.days.push({ id: uid('nd'), dayNumber: num, title: '', topics: [''], objectives: [''], tasks: ['', '', '', '', ''], warnings: [] }); });
+    },
+    deleteDay: (nolId: string, dayId: string) => editDraft(nolId, (n) => { n.days = n.days.filter((x) => x.id !== dayId); }, { action: 'Lesson day removed from draft', prev: 'Day', next: 'Removed' }),
+    saveDraft(nolId: string) {
+      if (editDraft(nolId, (n) => { n.history.push({ at: nowTs(), by: actor, action: 'Draft saved' }); })) toast('Draft saved');
+    },
+    discardDraft(nolId: string) {
+      if (!isAdmin) return deny();
+      mutate((d) => { d.nols = d.nols.filter((n) => n.id !== nolId); d.files.forEach((f) => { if (f.nolId === nolId) f.nolId = undefined; }); }, { action: 'Notes of Lesson draft discarded', entity: nolId, prev: 'Draft', next: 'Deleted', reason: '' });
+      toast('Draft discarded. The uploaded file is kept in Source files.', 'info');
+    },
+    publish(nolId: string, opts: { generateSyllabus: boolean }) {
+      if (!isAdmin) return deny();
+      const n = raw.nols.find((x) => x.id === nolId);
+      if (!n || n.status !== 'Draft') return false;
+      const issues = nolIssues(n);
+      if (issues.length) { toast(`Fix ${issues.length} issue(s) before publishing.`, 'error'); return false; }
+      const course = raw.courses.find((c) => c.id === n.courseId);
+      const prevSyl = raw.syllabi.filter((v) => v.courseId === n.courseId && v.status === 'Published').sort((a, b) => b.version - a.version)[0];
+      const prevTopics = new Map<string, string>();
+      prevSyl?.modules.forEach((m) => m.weeks.forEach((w) => w.days.forEach((d, di) => d.topics.forEach((t) => prevTopics.set(`${d.title}|${t.title}`.toLowerCase(), t.key)))));
+      void prevTopics;
+      const newVid = uid(`${n.courseId}-v`);
+      const sylVersion = Math.max(0, ...raw.syllabi.filter((v) => v.courseId === n.courseId).map((v) => v.version)) + 1;
+      const sorted = [...n.days].sort((a, b) => a.dayNumber - b.dayNumber);
+      const dayMap: Record<string, string> = {};
+      let syl: SyllabusVersion | undefined;
+      if (opts.generateSyllabus) {
+        // keep topic keys for topics that already existed (same day title + topic title) so recorded progress carries over
+        const weeks: SyllabusVersion['modules'][number]['weeks'] = [];
+        sorted.forEach((d, i) => {
+          const w = Math.floor(i / 5);
+          if (!weeks[w]) weeks[w] = { id: uid('w'), title: `Week ${w + 1}`, days: [] };
+          const dayId = uid('d');
+          dayMap[d.id] = dayId;
+          weeks[w].days.push({ id: dayId, title: d.title, topics: d.topics.filter((x) => x.trim()).map((title) => { const k = prevTopics.get(`${d.title}|${title}`.toLowerCase()) ?? uid(`${n.courseId}-t`); return { id: k, key: k, title, source: n.sourceKind === 'manual' ? 'manual' : n.sourceKind }; }) });
+        });
+        syl = { id: newVid, courseId: n.courseId, version: sylVersion, status: 'Published', createdAt: nowTs(), publishedAt: nowTs(), changeNote: `Generated from Notes of Lesson v${n.version}`, modules: [{ id: uid('m'), title: course?.name ?? 'Course', weeks }] };
+      }
+      mutate((d) => {
+        d.nols.forEach((x) => { if (x.courseId === n.courseId && x.status === 'Published') { x.status = 'Superseded'; x.history.push({ at: nowTs(), by: actor, action: `Superseded by v${n.version}` }); } });
+        const x = d.nols.find((y) => y.id === nolId)!;
+        x.status = 'Published'; x.publishedAt = nowTs(); x.publishedBy = actor;
+        x.days.sort((a, b) => a.dayNumber - b.dayNumber);
+        if (syl) {
+          d.syllabi.forEach((v) => { if (v.courseId === n.courseId && v.status === 'Published') v.status = 'Superseded'; });
+          d.syllabi.push(syl);
+          x.syllabusVersionId = syl.id;
+          x.days.forEach((dd) => { dd.syllabusDayId = dayMap[dd.id]; });
+        }
+        x.history.push({ at: nowTs(), by: actor, action: `Published v${n.version}${syl ? ` and generated syllabus v${sylVersion}` : ''}` });
+        const c = d.courses.find((y) => y.id === n.courseId); if (c && c.status === 'Draft') c.status = 'Published';
+      }, { action: 'Notes of Lesson published', entity: `${course?.name} v${n.version}`, prev: 'Draft', next: `Published${syl ? ` · syllabus v${sylVersion}` : ''}`, reason: 'Batches keep their current notes until assigned' });
+      toast(`Notes of Lesson v${n.version} published${syl ? ` with syllabus v${sylVersion}` : ''}. Assign it to batches next.`);
+      return true;
+    },
+    assign(nolId: string, batchIds: string[]) {
+      if (!isAdmin) return deny();
+      const n = raw.nols.find((x) => x.id === nolId);
+      if (!n || n.status !== 'Published') { toast('Only published notes can be assigned.', 'error'); return false; }
+      const valid = batchIds.filter((id) => raw.batches.find((b) => b.id === id)?.courseId === n.courseId);
+      mutate((d) => d.batches.forEach((b) => {
+        if (!valid.includes(b.id)) return;
+        b.nolId = n.id;
+        if (n.syllabusVersionId) b.syllabusVersionId = n.syllabusVersionId;
+      }), { action: 'Notes of Lesson assigned', entity: `${raw.courses.find((c) => c.id === n.courseId)?.name} v${n.version}`, prev: '—', next: valid.map((id) => raw.batches.find((b) => b.id === id)?.name).join(', '), reason: n.syllabusVersionId ? 'Batch syllabus version updated to match the notes' : '' });
+      const tus = [...new Set(valid.map((id) => raw.batches.find((b) => b.id === id)!.trainerId))].map((tid) => raw.users.find((u) => u.trainerId === tid)?.id).filter(Boolean) as string[];
+      notify(tus, { type: 'assignment', title: 'Notes of Lesson assigned', body: `${n.title} (v${n.version}) is now available for your ${raw.courses.find((c) => c.id === n.courseId)?.name} batch.`, link: { page: 't-notes' } });
+      toast(`Assigned to ${valid.length} batch(es); trainers notified`);
+      return true;
+    },
+    unassign(batchId: string) {
+      if (!isAdmin) return deny();
+      const b = raw.batches.find((x) => x.id === batchId);
+      mutate((d) => { const x = d.batches.find((y) => y.id === batchId)!; x.nolId = undefined; }, { action: 'Notes of Lesson unassigned', entity: b?.name ?? batchId, prev: b?.nolId ?? '—', next: '—', reason: '' });
+      toast(`Notes removed from ${b?.name}`, 'info');
+    },
+  };
+}
+
+/** trainer-side student task checklist */
+export function useTaskChecklist() {
+  const { raw, user, mutate, toast } = useApp();
+  return (batchId: string, date: string, nolId: string, dayNumber: number, taskIndex: number, status: 'Completed' | 'Not Completed') => {
+    const b = raw.batches.find((x) => x.id === batchId);
+    if (user?.role !== 'trainer' || !b || b.trainerId !== user.trainerId || b.nolId !== nolId) { toast('You can only update tasks for your own batches.', 'error'); return; }
+    if (isDayLocked(raw, user.trainerId!, date)) { toast('This day is locked because the report was submitted.', 'error'); return; }
+    mutate((d) => {
+      let c = d.taskChecks.find((x) => x.batchId === batchId && x.date === date && x.dayNumber === dayNumber && x.taskIndex === taskIndex);
+      if (!c) { c = { id: uid('tc'), trainerId: user.trainerId!, batchId, nolId, dayNumber, date, taskIndex, status, updatedAt: nowTs() }; d.taskChecks.push(c); }
+      c.status = status; c.updatedAt = nowTs();
+    });
+  };
+}
+
+/** Trainer chooses which syllabus day was taught for a batch on a class date. Saved, never inferred. */
+export function useLessonDay() {
+  const { raw, user, mutate, toast } = useApp();
+  return (batchId: string, date: string, syllabusDayId: string) => {
+    const b = raw.batches.find((x) => x.id === batchId);
+    if (user?.role !== 'trainer' || !b || b.trainerId !== user.trainerId) { toast('You can only plan lessons for your own batches.', 'error'); return false; }
+    if (date > new Date().toISOString().slice(0, 10) && date > todayLocal()) { toast('Choose today or an earlier class date.', 'error'); return false; }
+    if (isDayLocked(raw, user.trainerId!, date)) { toast('This day is locked because the report was submitted.', 'error'); return false; }
+    const prev = raw.lessonDays.find((x) => x.batchId === batchId && x.date === date);
+    if (prev?.syllabusDayId === syllabusDayId) return true;
+    const label = (id?: string) => { const td = id ? raw.syllabi.find((v) => v.id === b.syllabusVersionId)?.modules.flatMap((m) => m.weeks.flatMap((w) => w.days)).findIndex((d) => d.id === id) : -1; return td !== undefined && td >= 0 ? `Day ${td + 1}` : '—'; };
+    mutate((d) => {
+      const x = d.lessonDays.find((y) => y.batchId === batchId && y.date === date);
+      if (x) { x.syllabusDayId = syllabusDayId; x.at = nowTs(); x.trainerId = user.trainerId!; }
+      else d.lessonDays.push({ id: uid('ld'), batchId, date, syllabusDayId, trainerId: user.trainerId!, at: nowTs() });
+    }, { action: 'Lesson day selected', entity: `${b.name} · ${fmtDate(date)}`, prev: label(prev?.syllabusDayId), next: label(syllabusDayId), reason: '' });
+    return true;
+  };
+}
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+/** Save who sent WhatsApp updates for a batch + class date (replaces that day's selection until the report is submitted). */
+export function useWhatsAppUpdates() {
+  const { raw, user, mutate, toast } = useApp();
+  return (batchId: string, date: string, studentIds: string[], unmatched: string[], source: 'paste' | 'excel' | 'csv' | 'txt' | 'manual', fileName?: string) => {
+    const b = raw.batches.find((x) => x.id === batchId);
+    if (user?.role !== 'trainer' || !b || b.trainerId !== user.trainerId) { toast('You can only save updates for your own batches.', 'error'); return false; }
+    if (date > todayLocal()) { toast('Choose today or an earlier class date.', 'error'); return false; }
+    if (isDayLocked(raw, user.trainerId!, date)) { toast('The daily report for this date is submitted, so the selection is locked.', 'error'); return false; }
+    const allowed = new Set(raw.students.filter((st) => st.batchId === batchId).map((st) => st.id));
+    const ids = [...new Set(studentIds)].filter((id) => allowed.has(id));
+    if (ids.length !== new Set(studentIds).size) { toast('Some selected students are not in this batch and were left out.', 'warning'); }
+    const prev = raw.waUpdates.find((w) => w.batchId === batchId && w.date === date);
+    mutate((d) => {
+      let w = d.waUpdates.find((x) => x.batchId === batchId && x.date === date);
+      if (!w) { w = { id: uid('wa'), trainerId: user.trainerId!, batchId, date, studentIds: [], unmatched: [], source, savedAt: nowTs(), savedBy: user.name, history: [] }; d.waUpdates.push(w); }
+      w.studentIds = ids; w.unmatched = [...new Set(unmatched)]; w.source = source; w.fileName = fileName; w.savedAt = nowTs(); w.savedBy = user.name; w.trainerId = user.trainerId!;
+      w.history.push({ at: nowTs(), by: user.name, count: ids.length });
+    }, { action: prev ? 'WhatsApp updates edited' : 'WhatsApp updates saved', entity: `${b.name} · ${fmtDate(date)}`, prev: prev ? `${prev.studentIds.length} students` : '—', next: `${ids.length} students`, reason: fileName ?? source });
+    toast(`${ids.length} student${ids.length === 1 ? '' : 's'} saved for ${b.name} on ${fmtDate(date)}`);
+    return true;
+  };
+}

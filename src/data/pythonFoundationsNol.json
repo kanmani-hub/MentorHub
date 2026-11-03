@@ -1,0 +1,722 @@
+{
+ "title": "PYTHON FOUNDATIONS – NOTES OF LESSON",
+ "duration": "25 Days",
+ "days": [
+  {
+   "dayNumber": 1,
+   "title": "Programming Basics",
+   "topics": [
+    "What is programming?",
+    "What is a program?",
+    "Programming languages",
+    "Algorithm",
+    "Input–Process–Output (IPO)",
+    "Source code",
+    "Interpreter"
+   ],
+   "objectives": [
+    "Understand basic programming concepts.",
+    "Explain how a program works.",
+    "Understand the IPO process.",
+    "Differentiate an algorithm and a program."
+   ],
+   "tasks": [
+    "Write an algorithm to add two numbers.",
+    "Write an algorithm to calculate the area of a rectangle.",
+    "Identify the input, process and output for a student marks calculator.",
+    "Write step-by-step instructions for preparing a simple bill.",
+    "Explain the difference between an algorithm and a program with examples."
+   ],
+   "warnings": [],
+   "page": 1
+  },
+  {
+   "dayNumber": 2,
+   "title": "Python Environment",
+   "topics": [
+    "Introduction to Python",
+    "Python installation",
+    "Checking Python version",
+    "Visual Studio Code installation",
+    "Python extension",
+    "Python file extension (.py)",
+    "Terminal basics",
+    "Running Python programs"
+   ],
+   "objectives": [
+    "Set up the Python development environment.",
+    "Create Python files.",
+    "Execute Python programs.",
+    "Understand the editor and terminal."
+   ],
+   "tasks": [
+    "Install Python and verify the version.",
+    "Install VS Code and the Python extension.",
+    "Create a folder named Python_Practice.",
+    "Create and execute a file named hello.py.",
+    "Run a Python program using the terminal."
+   ],
+   "warnings": [],
+   "page": 2
+  },
+  {
+   "dayNumber": 3,
+   "title": "Python Basics",
+   "topics": [
+    "print() function",
+    "Strings and numbers",
+    "Comments",
+    "Single and double quotes",
+    "Escape characters",
+    "Literals",
+    "Basic expressions"
+   ],
+   "objectives": [
+    "Display information using print().",
+    "Understand strings and numeric literals.",
+    "Write comments in Python.",
+    "Execute basic Python expressions."
+   ],
+   "tasks": [
+    "Print your name, age, qualification and location.",
+    "Display a student profile using multiple print() statements.",
+    "Write a program using single and double quotes.",
+    "Display text on separate lines using escape characters.",
+    "Write a program to perform addition, subtraction, multiplication and division."
+   ],
+   "warnings": [],
+   "page": 2
+  },
+  {
+   "dayNumber": 4,
+   "title": "Variables and Data Types",
+   "topics": [
+    "What is a variable?",
+    "Variable assignment",
+    "Variable reassignment",
+    "Variable naming rules",
+    "Integer (int)",
+    "Float (float)",
+    "String (str)",
+    "Boolean (bool)",
+    "type() function"
+   ],
+   "objectives": [
+    "Create and assign variables.",
+    "Understand Python's basic data types.",
+    "Identify variable naming rules.",
+    "Check data types using type()."
+   ],
+   "tasks": [
+    "Create variables for student name, age, course and marks.",
+    "Create variables using integer, float, string and boolean values.",
+    "Display the data type of five different variables.",
+    "Update the value of an existing variable and display it.",
+    "Identify and correct invalid variable names in a given program."
+   ],
+   "warnings": [],
+   "page": 3
+  },
+  {
+   "dayNumber": 5,
+   "title": "Input and Output",
+   "topics": [
+    "input() function",
+    "Accepting user input",
+    "Input returns a string",
+    "int() conversion",
+    "float() conversion",
+    "str() conversion",
+    "Type conversion errors",
+    "f-strings",
+    "Formatted output"
+   ],
+   "objectives": [
+    "Accept information from users.",
+    "Convert input into the required data type.",
+    "Display formatted output.",
+    "Understand common type conversion errors."
+   ],
+   "tasks": [
+    "Get the user's name and age and display them.",
+    "Create a program to add two numbers entered by the user.",
+    "Create an age calculator using the birth year.",
+    "Calculate the total bill using item price and quantity.",
+    "Generate a formatted student report containing name, marks and percentage."
+   ],
+   "warnings": [],
+   "page": 4
+  },
+  {
+   "dayNumber": 6,
+   "title": "Operators",
+   "topics": [
+    "What are operators?",
+    "Arithmetic operators (+, -, *, /, //, %, **)",
+    "Comparison operators (==, !=, >, <, >=, <=)",
+    "Assignment operators (=, +=, -=, *=, /=)",
+    "Operator precedence"
+   ],
+   "objectives": [
+    "Perform calculations using arithmetic operators.",
+    "Compare two values.",
+    "Update variables using assignment operators.",
+    "Understand operator precedence."
+   ],
+   "tasks": [
+    "Calculate the area and perimeter of a rectangle.",
+    "Calculate the average of five subject marks.",
+    "Check whether a number is even or odd using the modulo operator.",
+    "Calculate quotient and remainder for two numbers.",
+    "Evaluate expressions involving multiple operators and explain the result."
+   ],
+   "warnings": [],
+   "page": 4
+  },
+  {
+   "dayNumber": 7,
+   "title": "Advanced Operators",
+   "topics": [
+    "Logical operators (and, or, not)",
+    "Membership operators (in, not in)",
+    "Identity operators (is, is not)",
+    "Equality (==) vs identity (is)",
+    "Combining conditions"
+   ],
+   "objectives": [
+    "Combine conditions using logical operators.",
+    "Check whether a value exists in a collection.",
+    "Understand identity comparisons.",
+    "Differentiate equality and identity."
+   ],
+   "tasks": [
+    "Check whether a person is eligible for a job using age and qualification.",
+    "Check whether a number is between 10 and 100.",
+    "Check whether a character exists in a given string.",
+    "Check whether an item exists in a shopping list.",
+    "Demonstrate the difference between == and is with suitable examples."
+   ],
+   "warnings": [],
+   "page": 5
+  },
+  {
+   "dayNumber": 8,
+   "title": "Conditional Statements",
+   "topics": [
+    "What are conditional statements?",
+    "Boolean conditions",
+    "if statement",
+    "elif statement",
+    "else statement",
+    "Indentation",
+    "Nested conditions",
+    "Multiple conditions"
+   ],
+   "objectives": [
+    "Understand decision-making in Python.",
+    "Use if, elif and else.",
+    "Write nested conditional statements.",
+    "Apply conditions to real-world problems."
+   ],
+   "tasks": [
+    "Check whether a number is positive, negative or zero.",
+    "Check whether a person is eligible to vote.",
+    "Create a student grade calculator.",
+    "Find the largest among three numbers.",
+    "Create a simple electricity bill calculator using conditional statements."
+   ],
+   "warnings": [],
+   "page": 5
+  },
+  {
+   "dayNumber": 9,
+   "title": "Input Validation",
+   "topics": [
+    "Multiple conditions",
+    "Nested if statements",
+    "Input validation",
+    "Valid and invalid inputs",
+    "Defensive checks",
+    "Readable conditional expressions",
+    "Boundary conditions"
+   ],
+   "objectives": [
+    "Validate user inputs.",
+    "Identify invalid data.",
+    "Write conditions for multiple requirements.",
+    "Handle boundary conditions."
+   ],
+   "tasks": [
+    "Create a login validation program using a sample username and password.",
+    "Validate whether an entered age is within an acceptable range.",
+    "Create a program to validate student marks between 0 and 100.",
+    "Calculate shipping charges based on purchase amount.",
+    "Create an electricity bill calculator using different consumption slabs."
+   ],
+   "warnings": [],
+   "page": 6
+  },
+  {
+   "dayNumber": 10,
+   "title": "Conditional Assessment",
+   "topics": [
+    "Revision of variables and data types",
+    "Revision of operators",
+    "Revision of conditional statements",
+    "Code tracing",
+    "Debugging",
+    "Boundary-value testing"
+   ],
+   "objectives": [
+    "Apply conditional statements to practical problems.",
+    "Trace the execution of a program.",
+    "Identify and correct errors.",
+    "Test programs using different inputs."
+   ],
+   "tasks": [
+    "Write a program to check whether a year is a leap year.",
+    "Create a calculator using conditional statements.",
+    "Create a ticket pricing program based on age.",
+    "Debug three programs containing conditional errors.",
+    "Complete a practical assessment with five conditional programming problems."
+   ],
+   "warnings": [],
+   "page": 6
+  },
+  {
+   "dayNumber": 11,
+   "title": "For Loop",
+   "topics": [
+    "What is iteration?",
+    "What is a loop?",
+    "for loop",
+    "Loop variable",
+    "range() function",
+    "range(start, stop)",
+    "range(start, stop, step)",
+    "Loop execution"
+   ],
+   "objectives": [
+    "Understand the purpose of loops.",
+    "Execute statements repeatedly using for.",
+    "Use the range() function.",
+    "Understand loop iteration."
+   ],
+   "tasks": [
+    "Print numbers from 1 to 50 using a for loop.",
+    "Print all even numbers between 1 and 100.",
+    "Print the multiplication table of a given number.",
+    "Calculate the sum of numbers from 1 to N.",
+    "Print numbers in reverse order using range()."
+   ],
+   "warnings": [],
+   "page": 7
+  },
+  {
+   "dayNumber": 12,
+   "title": "While Loop",
+   "topics": [
+    "What is a while loop?",
+    "Condition-controlled loops",
+    "Loop condition",
+    "Updating loop variables",
+    "Entry-controlled loops",
+    "Infinite loops",
+    "Loop termination"
+   ],
+   "objectives": [
+    "Understand condition-controlled iteration.",
+    "Use while loops.",
+    "Update loop variables correctly.",
+    "Prevent infinite loops."
+   ],
+   "tasks": [
+    "Print numbers from 1 to 20 using a while loop.",
+    "Print even numbers between 1 and 50.",
+    "Create a countdown timer using a while loop.",
+    "Find the sum of digits of a given number.",
+    "Create a menu-driven calculator that repeats until the user exits."
+   ],
+   "warnings": [],
+   "page": 7
+  },
+  {
+   "dayNumber": 13,
+   "title": "Loop Control",
+   "topics": [
+    "break statement",
+    "continue statement",
+    "pass statement",
+    "Nested loops",
+    "Loop control flow",
+    "Pattern programming"
+   ],
+   "objectives": [
+    "Control loop execution.",
+    "Understand the difference between break, continue and pass.",
+    "Execute nested loops.",
+    "Create patterns using loops."
+   ],
+   "tasks": [
+    "Print numbers from 1 to 20 and stop when the number reaches 10 using break.",
+    "Print numbers from 1 to 20 while skipping multiples of 3 using continue.",
+    "Demonstrate the use of the pass statement.",
+    "Print a right-angle star pattern using nested loops.",
+    "Print a multiplication table from 1 to 10 using nested loops."
+   ],
+   "warnings": [],
+   "page": 8
+  },
+  {
+   "dayNumber": 14,
+   "title": "Number Logic",
+   "topics": [
+    "Number-based programming",
+    "Digit extraction using % and //",
+    "Prime number",
+    "Factorial",
+    "Palindrome number",
+    "Armstrong number",
+    "Perfect number",
+    "Dry-run method"
+   ],
+   "objectives": [
+    "Solve number-based programming problems.",
+    "Extract individual digits from a number.",
+    "Apply loops and conditions to number logic.",
+    "Develop problem-solving skills."
+   ],
+   "tasks": [
+    "Write a program to check whether a number is prime.",
+    "Write a program to calculate the factorial of a number.",
+    "Write a program to check whether a number is a palindrome.",
+    "Write a program to check whether a number is an Armstrong number.",
+    "Write a program to check whether a number is a perfect number."
+   ],
+   "warnings": [],
+   "page": 8
+  },
+  {
+   "dayNumber": 15,
+   "title": "Loop Assessment",
+   "topics": [
+    "Revision of for loop",
+    "Revision of while loop",
+    "Nested loops",
+    "Loop control statements",
+    "Off-by-one errors",
+    "Accumulator initialization",
+    "Dry runs",
+    "Debugging and test cases"
+   ],
+   "objectives": [
+    "Apply loops to solve practical problems.",
+    "Identify common loop errors.",
+    "Trace loop execution.",
+    "Test programs using different values."
+   ],
+   "tasks": [
+    "Write a program to reverse a number.",
+    "Write a program to find the sum of digits.",
+    "Write a program to print all prime numbers within a range.",
+    "Create a program to print number and star patterns.",
+    "Debug and correct five programs containing loop errors."
+   ],
+   "warnings": [],
+   "page": 9
+  },
+  {
+   "dayNumber": 16,
+   "title": "Strings",
+   "topics": [
+    "What is a string?",
+    "String creation",
+    "String indexing",
+    "String slicing",
+    "String immutability",
+    "len()",
+    "lower(), upper(), strip()",
+    "replace(), split(), join()",
+    "String membership"
+   ],
+   "objectives": [
+    "Create and access strings.",
+    "Apply indexing and slicing.",
+    "Use built-in string methods.",
+    "Understand string immutability."
+   ],
+   "tasks": [
+    "Create a program to reverse a string.",
+    "Count the number of vowels in a string.",
+    "Check whether a given string is a palindrome.",
+    "Count the number of words in a sentence.",
+    "Create a username validation program using string methods."
+   ],
+   "warnings": [],
+   "page": 10
+  },
+  {
+   "dayNumber": 17,
+   "title": "Lists",
+   "topics": [
+    "What is a list?",
+    "Creating lists",
+    "Indexing and slicing",
+    "List mutability",
+    "append(), extend(), insert()",
+    "remove(), pop()",
+    "sort(), reverse()",
+    "Nested lists"
+   ],
+   "objectives": [
+    "Create and access lists.",
+    "Add, update and remove elements.",
+    "Apply list methods.",
+    "Understand list mutability."
+   ],
+   "tasks": [
+    "Create a list of student names and display each name.",
+    "Add, update and remove items from a shopping list.",
+    "Find the largest and smallest numbers in a list.",
+    "Calculate the sum and average of list elements.",
+    "Create a student marks management program using lists."
+   ],
+   "warnings": [],
+   "page": 11
+  },
+  {
+   "dayNumber": 18,
+   "title": "Tuples and Sets",
+   "topics": [
+    "What is a tuple?",
+    "Creating tuples",
+    "Tuple indexing and slicing",
+    "Tuple immutability",
+    "What is a set?",
+    "Set uniqueness",
+    "add(), remove(), discard()",
+    "Union, intersection and difference"
+   ],
+   "objectives": [
+    "Create and access tuples.",
+    "Understand tuple immutability.",
+    "Store unique values using sets.",
+    "Perform set operations."
+   ],
+   "tasks": [
+    "Create a tuple containing student details and access its elements.",
+    "Demonstrate tuple immutability.",
+    "Create a set of numbers and remove duplicate values.",
+    "Find the union and intersection of two sets.",
+    "Find common students registered for two different courses using sets."
+   ],
+   "warnings": [],
+   "page": 11
+  },
+  {
+   "dayNumber": 19,
+   "title": "Dictionaries",
+   "topics": [
+    "What is a dictionary?",
+    "Key-value pairs",
+    "Creating dictionaries",
+    "Accessing dictionary values",
+    "get(), keys(), values(), items()",
+    "update(), pop()",
+    "Nested dictionaries",
+    "Dictionary iteration"
+   ],
+   "objectives": [
+    "Create dictionaries.",
+    "Access values using keys.",
+    "Add, update and delete dictionary elements.",
+    "Work with nested dictionaries."
+   ],
+   "tasks": [
+    "Create a student dictionary containing name, age and marks.",
+    "Add a new key-value pair to an existing dictionary.",
+    "Update and delete dictionary values.",
+    "Create a contact book using dictionaries.",
+    "Create a word-frequency counter using a dictionary."
+   ],
+   "warnings": [],
+   "page": 12
+  },
+  {
+   "dayNumber": 20,
+   "title": "Collections Assessment",
+   "topics": [
+    "List revision",
+    "Tuple revision",
+    "Set revision",
+    "Dictionary revision",
+    "Differences between collections",
+    "Collection selection",
+    "Common collection operations"
+   ],
+   "objectives": [
+    "Differentiate lists, tuples, sets and dictionaries.",
+    "Select suitable data structures for problems.",
+    "Apply collection methods.",
+    "Combine collections in practical programs."
+   ],
+   "tasks": [
+    "Create a list of student marks and calculate the average.",
+    "Create a tuple to store fixed employee details.",
+    "Remove duplicate values from a list using a set.",
+    "Create a dictionary-based inventory management program.",
+    "Build a student record management program combining lists and dictionaries."
+   ],
+   "warnings": [],
+   "page": 12
+  },
+  {
+   "dayNumber": 21,
+   "title": "Functions",
+   "topics": [
+    "What is a function?",
+    "Advantages of functions",
+    "def keyword",
+    "Defining a function",
+    "Calling a function",
+    "Function parameters introduction",
+    "return statement",
+    "print() vs return",
+    "Local variables"
+   ],
+   "objectives": [
+    "Understand reusable code.",
+    "Define and call functions.",
+    "Return values from functions.",
+    "Divide programs into smaller functions."
+   ],
+   "tasks": [
+    "Create a function to add two numbers.",
+    "Create a function to calculate the area of a circle.",
+    "Create a function to check whether a number is even or odd.",
+    "Create a function to calculate student percentage.",
+    "Build a calculator using separate functions for arithmetic operations."
+   ],
+   "warnings": [],
+   "page": 13
+  },
+  {
+   "dayNumber": 22,
+   "title": "Function Arguments",
+   "topics": [
+    "Parameters and arguments",
+    "Positional arguments",
+    "Keyword arguments",
+    "Default arguments",
+    "Argument order",
+    "Required and optional arguments"
+   ],
+   "objectives": [
+    "Pass values to functions.",
+    "Understand different argument types.",
+    "Use default values.",
+    "Create flexible functions."
+   ],
+   "tasks": [
+    "Create a function using positional arguments to display student details.",
+    "Create a function using keyword arguments.",
+    "Create a function with a default country argument.",
+    "Create a bill calculator with an optional discount parameter.",
+    "Create an employee salary calculator using different argument styles."
+   ],
+   "warnings": [],
+   "page": 13
+  },
+  {
+   "dayNumber": 23,
+   "title": "Advanced Functions",
+   "topics": [
+    "*args",
+    "**kwargs",
+    "Variable positional arguments",
+    "Variable keyword arguments",
+    "Local scope",
+    "Global scope",
+    "LEGB scope introduction",
+    "Docstrings",
+    "Basic type hints"
+   ],
+   "objectives": [
+    "Accept multiple arguments in functions.",
+    "Understand variable-length arguments.",
+    "Differentiate local and global scope.",
+    "Document functions using docstrings.",
+    "Apply basic type hints."
+   ],
+   "tasks": [
+    "Create a function using *args to calculate the sum of multiple numbers.",
+    "Create a function using **kwargs to display employee details.",
+    "Demonstrate local and global variables.",
+    "Write a function with a docstring explaining its purpose.",
+    "Create functions using basic type hints for parameters and return values."
+   ],
+   "warnings": [],
+   "page": 14
+  },
+  {
+   "dayNumber": 24,
+   "title": "Lambda and Recursion",
+   "topics": [
+    "What is a lambda function?",
+    "Lambda syntax",
+    "Anonymous functions",
+    "sorted() function",
+    "Sorting using key",
+    "What is recursion?",
+    "Base case",
+    "Recursive call",
+    "Recursion call stack"
+   ],
+   "objectives": [
+    "Create lambda functions.",
+    "Use lambda with sorting.",
+    "Understand recursive functions.",
+    "Identify base cases and recursive calls."
+   ],
+   "tasks": [
+    "Create a lambda function to add two numbers.",
+    "Create a lambda function to check whether a number is even or odd.",
+    "Sort a list of tuples based on the second element using sorted() and key.",
+    "Calculate factorial using recursion.",
+    "Calculate the sum of numbers from 1 to N using recursion."
+   ],
+   "warnings": [],
+   "page": 15
+  },
+  {
+   "dayNumber": 25,
+   "title": "Function Assessment",
+   "topics": [
+    "Function revision",
+    "Function decomposition",
+    "Reusable functions",
+    "Function naming",
+    "Return values",
+    "Testing functions",
+    "Assertions"
+   ],
+   "objectives": [
+    "Apply functions to solve practical problems.",
+    "Write reusable and organized code.",
+    "Break complex problems into functions.",
+    "Test function outputs."
+   ],
+   "tasks": [
+    "Create a menu-driven calculator using functions.",
+    "Create a student marks management application using functions.",
+    "Create an employee salary calculation program using separate functions.",
+    "Build a simple banking application with deposit, withdrawal and balance functions.",
+    "Build a mini library management program using functions and collections."
+   ],
+   "warnings": [],
+   "page": 15
+  }
+ ],
+ "warnings": [],
+ "unrecognised": []
+}
