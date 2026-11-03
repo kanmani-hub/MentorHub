@@ -146,6 +146,15 @@ export interface TopicProgress {
   dayNumber?: number;
 }
 
+export interface StudentVoiceNoteItem {
+  id?: string;
+  studentId?: string;
+  studentName: string;
+  title: string;
+  date?: string;
+  submittedAt?: string;
+}
+
 /** Students who sent WhatsApp updates or voice notes for a batch on a class date (one record per batch + date). */
 export interface WhatsAppUpdate {
   id: string;
@@ -153,6 +162,8 @@ export interface WhatsAppUpdate {
   batchId: string;
   date: string;
   studentIds: string[];
+  /** student voice note details */
+  voiceNotes?: { studentId: string; title: string; submittedAt?: string }[];
   /** names from the upload that matched no batch student, kept for reference only */
   unmatched: string[];
   source: 'paste' | 'excel' | 'csv' | 'txt' | 'manual';
@@ -306,6 +317,7 @@ export interface BatchSummary {
   batchName: string;
   course: string;
   timing: string;
+  classDate?: string;
   present: number;
   late: number;
   absent: number;
@@ -323,10 +335,11 @@ export interface BatchSummary {
   projects?: ProjectItem[];
   studentTasks?: { text: string; status: 'Completed' | 'Not Completed' | 'Not marked' }[];
   whatsappStudents?: string[];
+  studentVoiceNotes?: StudentVoiceNoteItem[];
   batchRemarks?: string;
   completed: string[];
-  partial: { title: string; note: string }[];
-  pending: { title: string; note: string }[];
+  partial: { title: string; note: string; day?: string }[];
+  pending: { title: string; note: string; day?: string }[];
   practicals: string;
   homework: string;
   assignments: string;

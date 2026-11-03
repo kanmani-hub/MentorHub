@@ -430,6 +430,11 @@ export function useWhatsAppUpdates() {
     mutate((d) => {
       let w = d.waUpdates.find((x) => x.batchId === batchId && x.date === date);
       if (!w) { w = { id: uid('wa'), trainerId: user.trainerId!, batchId, date, studentIds: [], unmatched: [], source, savedAt: nowTs(), savedBy: user.name, history: [] }; d.waUpdates.push(w); }
+      const defaultVoiceTitles = ['Doubt clarification', 'Topic explanation request', 'Practical exercise feedback', 'Assignment clarification'];
+      w.voiceNotes = ids.map((id, idx) => {
+        const existing = prev?.voiceNotes?.find((v) => v.studentId === id);
+        return existing ?? { studentId: id, title: defaultVoiceTitles[idx % defaultVoiceTitles.length], submittedAt: nowTs() };
+      });
       w.studentIds = ids; w.unmatched = [...new Set(unmatched)]; w.source = source; w.fileName = fileName; w.savedAt = nowTs(); w.savedBy = user.name; w.trainerId = user.trainerId!;
       w.history.push({ at: nowTs(), by: user.name, count: ids.length });
     }, { action: prev ? 'WhatsApp updates edited' : 'WhatsApp updates saved', entity: `${b.name} · ${fmtDate(date)}`, prev: prev ? `${prev.studentIds.length} students` : '—', next: `${ids.length} students`, reason: fileName ?? source });

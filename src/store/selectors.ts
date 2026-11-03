@@ -1,5 +1,5 @@
 import type {
-  AppState, Batch, BatchSummary, Day, DerivedReportStatus, ReportSnapshot, SyllabusVersion, Topic, TopicProgress, User,
+  AppState, Batch, BatchSummary, Day, DerivedReportStatus, ReportSnapshot, StudentVoiceNoteItem, SyllabusVersion, Topic, TopicProgress, User,
 } from '../types';
 import { minutesBetween, nowHHMM, pct, todayISO } from '../utils';
 
@@ -203,13 +203,15 @@ export const buildSnapshot = (s: AppState, trainerId: string, date: string): Rep
     const pending: BatchSummary['pending'] = [];
     for (const t of keys) {
       const rec = s.progress.find((p) => p.batchId === b.id && p.topicKey === t.key && p.date === date);
+      const td = topicDay(s, b, t.key);
+      const dayStr = td ? `Day ${td.dayNumber}` : undefined;
       if (!rec) {
-        if (plan.topics.includes(t)) pending.push({ title: t.title, note: 'Not updated' });
+        if (plan.topics.includes(t)) pending.push({ title: t.title, note: 'Not updated', day: dayStr });
         continue;
       }
       if (rec.status === 'Completed') completed.push(t.title);
-      else if (rec.status === 'Partially Completed') partial.push({ title: t.title, note: rec.reason });
-      else pending.push({ title: t.title, note: rec.reason });
+      else if (rec.status === 'Partially Completed') partial.push({ title: t.title, note: rec.reason, day: dayStr });
+      else pending.push({ title: t.title, note: rec.reason, day: dayStr });
     }
     const act = activityFor(s, trainerId, b.id, date);
     const br = batchReportFor(s, trainerId, b.id, date);
@@ -219,11 +221,24 @@ export const buildSnapshot = (s: AppState, trainerId: string, date: string): Rep
     const nd = nolDayFor(s, b, date);
     const checks = taskChecksFor(s, b.id, date);
     const studentTasks = nd ? nd.day.tasks.map((text, i) => ({ text, status: (checks.find((c) => c.taskIndex === i && c.dayNumber === nd.day.dayNumber)?.status ?? 'Not marked') as 'Completed' | 'Not Completed' | 'Not marked' })) : undefined;
+    const wa = s.waUpdates.find((w) => w.batchId === b.id && w.date === date);
+    const defaultVoiceTitles = ['Doubt clarification', 'Topic explanation request', 'Practical exercise feedback', 'Assignment clarification'];
+    const studentVoiceNotes: StudentVoiceNoteItem[] = (wa?.studentIds ?? []).map((id, idx) => {
+      const vnItem = wa?.voiceNotes?.find((v) => v.studentId === id);
+      return {
+        studentId: id,
+        studentName: nameOf(id),
+        title: vnItem?.title || defaultVoiceTitles[idx % defaultVoiceTitles.length],
+        date,
+        submittedAt: vnItem?.submittedAt || wa?.savedAt || date,
+      };
+    });
     return {
       batchId: b.id,
       batchName: b.name,
       course: courseName(s, b.courseId),
       timing: `${b.startTime}–${b.endTime}`,
+      classDate: date,
       present: marks.filter((m) => m === 'Present').length,
       late: marks.filter((m) => m === 'Late').length,
       absent: marks.filter((m) => m === 'Absent').length,
@@ -235,7 +250,8 @@ export const buildSnapshot = (s: AppState, trainerId: string, date: string): Rep
       onLeave: ids.filter((id) => att!.marks[id] === 'Leave').map((id) => ({ name: nameOf(id), reason: att!.reasons?.[id] ?? '' })),
       lateList: ids.filter((id) => att!.marks[id] === 'Late').map((id) => ({ name: nameOf(id), time: att!.lateTimes?.[id] ?? '' })),
       batchReportStatus: br?.status ?? 'Not started',
-      whatsappStudents: (s.waUpdates.find((w) => w.batchId === b.id && w.date === date)?.studentIds ?? []).map(nameOf),
+      whatsappStudents: (wa?.studentIds ?? []).map(nameOf),
+      studentVoiceNotes,
       studentTasks,
       practicalList: br?.practicals ?? [],
       assignmentList: br?.assignments ?? [],

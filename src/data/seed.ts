@@ -313,11 +313,34 @@ export function createSeed(): AppState {
   // Karthik saved a draft batch report before his evening class
   state.batchReports.push({ id: id('br'), trainerId: 'T07', batchId: 'B10', date: today, status: 'Draft', practicals: [], assignments: [], doubts: [], voiceNames: [{ id: id('vi'), text: 'SQL Day 2 – Filtering Intro' }], projects: [], remarks: 'Class at 6 PM', createdAt: tsAt(today, '17:35'), updatedAt: tsAt(today, '17:35'), history: [{ at: tsAt(today, '17:35'), by: 'Karthik Subramanian', action: 'Draft saved' }] });
 
-  // ---- WhatsApp student updates: who sent updates / voice notes (sample selections for days already reported) ----
+  // ---- Student voice notes: who sent voice notes (for days already reported) ----
+  const sampleVoiceTitles = [
+    'Doubt clarification',
+    'Topic explanation request',
+    'Practical exercise feedback',
+    'Assignment clarification',
+  ];
   for (const br of state.batchReports.filter((r) => r.status === 'Submitted')) {
     const ids = studentIds(br.batchId).filter((sid, i) => (hash(sid + br.date) + i) % 3 !== 0);
     if (!ids.length) continue;
-    state.waUpdates.push({ id: id('wa'), trainerId: br.trainerId, batchId: br.batchId, date: br.date, studentIds: ids, unmatched: [], source: 'paste', savedAt: br.submittedAt ?? br.updatedAt, savedBy: trainerNameById(br.trainerId), history: [{ at: br.updatedAt, by: trainerNameById(br.trainerId), count: ids.length }] });
+    const vNotes = ids.map((sid, idx) => ({
+      studentId: sid,
+      title: sampleVoiceTitles[idx % sampleVoiceTitles.length],
+      submittedAt: br.submittedAt ?? br.updatedAt,
+    }));
+    state.waUpdates.push({
+      id: id('wa'),
+      trainerId: br.trainerId,
+      batchId: br.batchId,
+      date: br.date,
+      studentIds: ids,
+      voiceNotes: vNotes,
+      unmatched: [],
+      source: 'paste',
+      savedAt: br.submittedAt ?? br.updatedAt,
+      savedBy: trainerNameById(br.trainerId),
+      history: [{ at: br.updatedAt, by: trainerNameById(br.trainerId), count: ids.length }],
+    });
   }
 
   // ---- Activities for T01 past already added; reports ----
