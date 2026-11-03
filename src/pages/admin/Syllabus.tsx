@@ -244,7 +244,7 @@ function PdfImport({ onDone }: { onDone: (courseId: string) => void }) {
           <Button className="mt-2" variant="secondary" onClick={() => ref.current?.click()}>Browse files</Button>
           <input ref={ref} id="pdf-file" type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => accept(e.target.files?.[0])} />
           {err && <div className="mt-3 text-sm text-red-600">{err}</div>}
-          <Button size="sm" variant="ghost" className="mt-3" onClick={() => { const b = getFile('F-PF-1'); if (b) accept(new File([b], 'Python_Foundations_Notes_of_Lesson.pdf', { type: 'application/pdf' })); }}>Use the stored Python Foundations PDF</Button>
+          <Button size="sm" variant="ghost" className="mt-3" onClick={() => { const b = getFile('F-PF-1'); if (b) { const buf = new Uint8Array(b) as BlobPart; accept(new File([buf], 'Python_Foundations_Notes_of_Lesson.pdf', { type: 'application/pdf' })); } }}>Use the stored Python Foundations PDF</Button>
         </div>
       )}
       {step === 'upload' && (
