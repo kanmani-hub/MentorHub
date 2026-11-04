@@ -15,7 +15,7 @@ import Syllabus from './pages/admin/Syllabus';
 import NotesOfLessonPage, { SyllabusSwitch } from './pages/admin/NotesOfLesson';
 import Batches, { AdminBatchDetail } from './pages/admin/Batches';
 import Students from './pages/admin/Students';
-import { AdminActivities, AdminAttendance, AdminSyllabusProgress, AuditLogs } from './pages/admin/Monitoring';
+import { AdminActivities, AdminAttendance, AuditLogs } from './pages/admin/Monitoring';
 import { AdminWhatsAppUpdates, WhatsAppUpdatesPage } from './pages/trainer/WhatsApp';
 import Reports, { AssignedReports, ReportDetail } from './pages/admin/Reports';
 import Analytics from './pages/admin/Analytics';
@@ -64,7 +64,6 @@ function Router() {
     case 'batch': return <AdminBatchDetail key={id} id={id!} />;
     case 'students': return <Students />;
     case 'attendance': return <AdminAttendance />;
-    case 'syl-progress': return <AdminSyllabusProgress />;
     case 'voice': return <AdminReportsModule value="voice"><AdminWhatsAppUpdates /></AdminReportsModule>;
     case 'activities': return <AdminReportsModule value="activities"><AdminActivities /></AdminReportsModule>;
     case 'reports': return <AdminReportsModule value="reports"><Reports key="r" /></AdminReportsModule>;

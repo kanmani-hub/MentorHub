@@ -1,11 +1,10 @@
-import { AlertTriangle, BookOpen, CalendarClock, CheckCheck, ClipboardList, FileClock, FileText, GraduationCap, UserCheck, Users, UserCog } from 'lucide-react';
+import { CalendarClock, ClipboardList, FileText, GraduationCap, UserCheck } from 'lucide-react';
 import { useApp } from '../../store/AppStore';
 import {
   activeTrainerBatches, attendanceFor, batchProgress, classBatchesOn, courseName, dailyWork, derivedStatus, publishedVersion, allTopics,
   reportMetric, trainerBatches, trainerSyllabus, workMinutes, studentsOf, reportFor, batchReportFor, nolDayCompletion,
 } from '../../store/selectors';
 import { Avatar, Badge, Button, Card, Details, Empty, Progress, Stat, Table } from '../../components/common/ui';
-import type { ReactNode } from 'react';
 import { Bars, SERIES } from '../../components/charts/Charts';
 import { cx, fmtDateTime, fmtDay, fmtMins, fmtShort, prevWeekdays, todayISO, pct } from '../../utils';
 import { assignedTo, myReview } from '../../store/reviews';
@@ -22,8 +21,6 @@ export default function AdminDashboard() {
   // reviewer-specific counters: only reports this admin was selected to review
   const mine = assignedTo(s, user!.id);
   const awaiting = mine.filter((r) => myReview(r, user!.id).awaiting).length;
-  const approvedByMe = mine.filter((r) => (r.reviewHistory ?? []).some((h) => h.reviewerId === user!.id && h.action === 'Approved')).length;
-  const needCorrection = mine.filter((r) => r.status === 'Correction Requested').length;
   const last7 = [...prevWeekdays(today, 6).reverse(), today];
 
   const reportData = last7.map((d) => {
@@ -52,16 +49,7 @@ export default function AdminDashboard() {
   // report status feed comes straight from report history (no separate notifications module)
   const reportFeed = s.reports.flatMap((r) => r.events.filter((e) => /Submitted|Resubmitted|Approved|Rejected|Correction requested/.test(e.action)).map((e) => ({ ...e, r }))).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6);
   void user;
-  const draftSyllabi = s.syllabi.filter((v) => v.status === 'Draft');
-  const overdueList = teaching.filter((t) => derivedStatus(s, t.id, today) === 'Overdue' || prevWeekdays(today, 5).some((d) => classBatchesOn(s, t.id, d).length && derivedStatus(s, t.id, d) === 'Overdue'));
-
   const studentsActive = s.students.filter((x) => x.status === 'Active').length;
-  const attention: { icon: ReactNode; text: string; go: () => void }[] = [
-    ...overdueList.map((t) => ({ icon: <AlertTriangle size={16} className="text-red-500 dark:text-red-300" />, text: `${t.name}: daily report overdue`, go: () => go({ page: 'trainer', id: t.id }) })),
-    ...(todaysClasses.length - attDone > 0 ? [{ icon: <CalendarClock size={16} className="text-amber-500 dark:text-amber-300" />, text: `${todaysClasses.length - attDone} class${todaysClasses.length - attDone === 1 ? '' : 'es'} without submitted attendance`, go: () => go('attendance') }] : []),
-    ...draftSyllabi.map((v) => ({ icon: <BookOpen size={16} className="text-amber-500 dark:text-amber-300" />, text: `Syllabus draft waiting: ${s.courses.find((c) => c.id === v.courseId)?.name ?? v.courseId} v${v.version}`, go: () => go({ page: 'syllabus', id: v.courseId }) })),
-    ...s.trainers.filter((t) => t.status === 'Active' && !activeTrainerBatches(s, t.id).length).map((t) => ({ icon: <UserCog size={16} className="text-ink-400" />, text: `${t.name} has no active batch`, go: () => go('batches') })),
-  ];
   const metrics = [
     { k: 'Syllabus progress', d: `${sylDone} of ${sylTotal} topics`, v: pct(sylDone, sylTotal), tone: 'blue' as const },
     { k: 'Daily work today', d: `${workDone} of ${workReq} activities`, v: pct(workDone, workReq), tone: 'purple' as const },
@@ -83,48 +71,6 @@ export default function AdminDashboard() {
         <Stat label="Active batches" value={activeBatches.length} sub={`${studentsActive} students`} icon={<GraduationCap size={17} />} tone="blue" onClick={() => go('batches')} />
         <Stat label="Today's classes" value={todaysClasses.length} sub={`${attDone} with attendance submitted`} icon={<CalendarClock size={17} />} tone="purple" onClick={() => go('attendance')} />
         <Stat label="Daily reports today" value={`${submittedToday}/${teaching.length}`} sub={pendingToday ? `${pendingToday} not yet submitted` : 'All submitted'} icon={<FileText size={17} />} tone={pendingToday ? 'orange' : 'green'} onClick={() => go('reports')} />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-3">
-        <Card title="Today's classes" pad={false} className="xl:col-span-2" action={<Button size="sm" variant="ghost" onClick={() => go('attendance')}>Attendance</Button>}>
-          <Table head={['Time', 'Batch', 'Trainer', 'Attendance', 'Daily report']} minW={560} empty={!todaysClasses.length && <Empty title="No classes today" />}>
-            {todaysClasses.map((b) => {
-              const att = attendanceFor(s, b.id, today);
-              const marked = att ? Object.keys(att.marks).length : 0;
-              return (
-                <tr key={b.id}>
-                  <td className="whitespace-nowrap tabular-nums text-ink-500">{b.startTime}–{b.endTime}</td>
-                  <td><button className="font-medium text-ink-900 hover:text-royal-600 dark:text-ink-50 dark:hover:text-royal-200" onClick={() => go({ page: 'batch', id: b.id })}>{b.name}</button></td>
-                  <td>{s.trainers.find((t) => t.id === b.trainerId)?.name}</td>
-                  <td>{att?.status === 'Submitted' ? <Badge>Submitted</Badge> : att ? <Badge color="orange">Draft {marked}/{studentsOf(s, b.id).length}</Badge> : <Badge color="grey">Not started</Badge>}</td>
-                  <td><Badge>{derivedStatus(s, b.trainerId, today)}</Badge></td>
-                </tr>
-              );
-            })}
-          </Table>
-        </Card>
-
-        <div className="space-y-6">
-          <Card title="My report reviews" pad={false}>
-            <ul id="admin-review-indicators" className="divide-y divide-ink-100 text-sm dark:divide-ink-800">
-              {([['Awaiting my review', awaiting, awaiting > 0], ['Reports assigned to me', mine.length, false], ['Approved by me', approvedByMe, false], ['Requiring trainer correction', needCorrection, needCorrection > 0]] as const).map(([l, v, hot]) => (
-                <li key={l}><button onClick={() => go('approvals')} className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-ink-50/70 dark:hover:bg-ink-800/40 sm:px-5">
-                  <span className="text-ink-700 dark:text-ink-200">{l}</span>
-                  <span className={cx('tabular-nums font-semibold', hot ? 'text-royal-700 dark:text-royal-200' : 'text-ink-900 dark:text-ink-100')}>{v}</span>
-                </button></li>
-              ))}
-            </ul>
-          </Card>
-          <Card title="Needs attention" pad={false}>
-            {attention.length ? (
-              <ul className="divide-y divide-ink-100 text-sm dark:divide-ink-800">
-                {attention.slice(0, 6).map((a, i) => (
-                  <li key={i}><button onClick={a.go} className="flex w-full items-start gap-2.5 px-4 py-2.5 text-left text-ink-700 hover:bg-ink-50/70 dark:text-ink-200 dark:hover:bg-ink-800/40 sm:px-5"><span className="mt-0.5 shrink-0">{a.icon}</span><span className="min-w-0">{a.text}</span></button></li>
-                ))}
-              </ul>
-            ) : <p className="px-5 py-4 text-sm text-ink-500 dark:text-ink-400">Nothing needs attention right now.</p>}
-          </Card>
-        </div>
       </div>
 
       <Card title="Progress" action={<Button size="sm" variant="ghost" onClick={() => go('analytics')}>Analytics</Button>}>
