@@ -76,9 +76,9 @@ function UploadPanel({ courseId, onDone }: { courseId: string; onDone: (nolId: s
             <Button className="mt-3" variant="secondary" onClick={() => xlRef.current?.click()} disabled={!!busy}>Browse spreadsheet</Button>
             <input ref={xlRef} id="nol-xl" type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { handle(e.target.files?.[0]); e.target.value = ''; }} />
           </div>
-          <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[300px] text-[11px]"><thead><tr className="text-left text-ink-500">{['Day', 'Day Title', 'Section', 'Item'].map((h) => <th key={h} className="border-b border-ink-200 px-1 py-0.5 dark:border-ink-700">{h}</th>)}</tr></thead>
+          <div className="mt-2 overflow-x-auto"><table className="w-full min-w-[300px] text-xs"><thead><tr className="text-left text-ink-500">{['Day', 'Day Title', 'Section', 'Item'].map((h) => <th key={h} className="border-b border-ink-200 px-1 py-0.5 dark:border-ink-700">{h}</th>)}</tr></thead>
             <tbody className="text-ink-700 dark:text-ink-300"><tr><td className="px-1">1</td><td className="px-1">Programming Basics</td><td className="px-1">Topics to Cover</td><td className="px-1">What is programming?</td></tr><tr><td className="px-1">1</td><td /><td className="px-1">Student Tasks</td><td className="px-1">Write an algorithm…</td></tr></tbody></table>
-            <p className="mt-1 text-[11px] text-ink-500">Or columns Day · Day Title · Topics to Cover · Learning Objectives · Student Tasks, with items on separate lines.</p></div>
+            <p className="mt-1 text-xs text-ink-500">Or columns Day · Day Title · Topics to Cover · Learning Objectives · Student Tasks, with items on separate lines.</p></div>
         </Card>
         <Card title="Manual lesson entries" subtitle="Type the notes day by day">
           <div className="flex flex-col items-center rounded-xl border-2 border-dashed border-ink-300 px-3 py-8 text-center dark:border-ink-700">
@@ -213,7 +213,7 @@ function TrainerProgress({ courseId }: { courseId: string }) {
                 const c = nolDayCompletion(s, b, d.dayNumber);
                 const tasks = s.taskChecks.filter((t) => t.batchId === b.id && t.dayNumber === d.dayNumber && t.status === 'Completed').length;
                 const tone = c.complete ? 'bg-emerald-500 text-white' : c.done ? 'bg-amber-400 text-white' : 'bg-ink-100 text-ink-500 dark:bg-ink-800';
-                return <div key={d.id} title={`Day ${d.dayNumber} – ${d.title}: topics ${c.done}/${c.total}, tasks ${tasks}/${d.tasks.length}`} className={cx('rounded-md px-1 py-1.5 text-center text-[11px] font-semibold tabular-nums', tone)}>{d.dayNumber}<div className="text-[9px] font-normal opacity-80">{tasks}/{d.tasks.length}</div></div>;
+                return <div key={d.id} title={`Day ${d.dayNumber} – ${d.title}: topics ${c.done}/${c.total}, tasks ${tasks}/${d.tasks.length}`} className={cx('rounded-md px-1 py-1.5 text-center text-xs font-semibold tabular-nums', tone)}>{d.dayNumber}<div className="text-xs font-normal opacity-80">{tasks}/{d.tasks.length}</div></div>;
               })}
             </div>
             <div className="mt-2 flex flex-wrap gap-3 text-xs text-ink-500"><span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-emerald-500" />All topics completed</span><span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-amber-400" />Some topics completed</span><span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded bg-ink-200 dark:bg-ink-700" />Not started</span><span>Small number = student tasks completed / 5</span></div>

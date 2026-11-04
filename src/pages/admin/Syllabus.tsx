@@ -96,7 +96,7 @@ function TreeEditor({ v, editable, reviewIds }: { v: SyllabusVersion; editable: 
         <div key={m.id} className="overflow-hidden rounded-xl border border-ink-200 dark:border-ink-800">
           <div className="flex items-center gap-1.5 bg-navy-50/70 px-2.5 py-2 dark:bg-navy-600/10">
             <button onClick={() => setOpen((o) => ({ ...o, [m.id]: !o[m.id] }))} className="text-ink-500" aria-label="Expand">{open[m.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
-            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-violet2-600 dark:text-violet-300">Module {mi + 1}</span>
+            <span className="shrink-0 text-xs font-semibold text-violet2-600 dark:text-violet-300">Module {mi + 1}</span>
             <Editable value={m.title} disabled={!editable} className="font-medium text-ink-900 dark:text-ink-50" onSave={(t) => edit((ms) => { ms[mi].title = t; })} />
             {editable && <>
               <IconBtn label="Move module up" onClick={() => edit((ms) => move(ms, mi, -1))}><ArrowUp size={14} /></IconBtn>
@@ -124,7 +124,7 @@ function TreeEditor({ v, editable, reviewIds }: { v: SyllabusVersion; editable: 
                       return (
                         <div key={day.id} className={cx('rounded-lg border p-2.5', flagged ? 'border-amber-400/70 bg-amber-50/40 dark:bg-amber-500/5' : 'border-ink-100 dark:border-ink-800')}>
                           <div className="flex items-center gap-1.5">
-                            <span className="shrink-0 text-[11px] font-semibold tabular-nums text-ink-400">DAY {dayCounter}</span>
+                            <span className="shrink-0 text-xs font-semibold tabular-nums text-ink-400">DAY {dayCounter}</span>
                             <Editable value={day.title} disabled={!editable} className="text-sm font-medium text-ink-900 dark:text-ink-100" onSave={(t) => edit((ms) => { ms[mi].weeks[wi].days[di].title = t; })} />
                             {flagged && <Badge color="orange" dot={false}>Review</Badge>}
                             {editable && <>
@@ -136,9 +136,9 @@ function TreeEditor({ v, editable, reviewIds }: { v: SyllabusVersion; editable: 
                           <ol className="mt-1.5 space-y-0.5">
                             {day.topics.map((t: Topic, ti) => (
                               <li key={t.id} className="group flex items-center gap-1.5 rounded px-1 py-0.5 text-[13px] hover:bg-ink-50 dark:hover:bg-ink-800/50">
-                                <span className="w-5 shrink-0 text-right text-[11px] tabular-nums text-ink-400">{ti + 1}.</span>
+                                <span className="w-5 shrink-0 text-right text-xs tabular-nums text-ink-400">{ti + 1}.</span>
                                 <Editable value={t.title} disabled={!editable} className="text-ink-700 dark:text-ink-200" onSave={(x) => edit((ms) => { ms[mi].weeks[wi].days[di].topics[ti].title = x; })} />
-                                {t.source && t.source !== 'seed' && <span className="shrink-0 rounded bg-ink-100 px-1 text-[10px] uppercase text-ink-500 dark:bg-ink-800">{t.source}</span>}
+                                {t.source && t.source !== 'seed' && <span className="shrink-0 rounded bg-ink-100 px-1 text-xs text-ink-500 dark:bg-ink-800">{t.source}</span>}
                                 {editable && <span className="flex shrink-0 opacity-60 group-hover:opacity-100">
                                   <IconBtn label="Move topic up" onClick={() => edit((ms) => move(ms[mi].weeks[wi].days[di].topics, ti, -1))}><ArrowUp size={12} /></IconBtn>
                                   <IconBtn label="Move topic down" onClick={() => edit((ms) => move(ms[mi].weeks[wi].days[di].topics, ti, 1))}><ArrowDown size={12} /></IconBtn>
@@ -244,7 +244,7 @@ function PdfImport({ onDone }: { onDone: (courseId: string) => void }) {
           <Button className="mt-2" variant="secondary" onClick={() => ref.current?.click()}>Browse files</Button>
           <input ref={ref} id="pdf-file" type="file" accept=".pdf,application/pdf" className="hidden" onChange={(e) => accept(e.target.files?.[0])} />
           {err && <div className="mt-3 text-sm text-red-600">{err}</div>}
-          <Button size="sm" variant="ghost" className="mt-3" onClick={() => { const b = getFile('F-PF-1'); if (b) { const buf = new Uint8Array(b) as BlobPart; accept(new File([buf], 'Python_Foundations_Notes_of_Lesson.pdf', { type: 'application/pdf' })); } }}>Use the stored Python Foundations PDF</Button>
+          <Button size="sm" variant="ghost" className="mt-3" onClick={() => { const b = getFile('F-PF-1'); if (b) accept(new File([new Uint8Array(b)], 'Python_Foundations_Notes_of_Lesson.pdf', { type: 'application/pdf' })); }}>Use the stored Python Foundations PDF</Button>
         </div>
       )}
       {step === 'upload' && (
@@ -445,10 +445,16 @@ export default function Syllabus({ courseId: initial }: { courseId?: string }) {
     <div>
       <SyllabusSwitch value="syllabus" />
       <PageHeader title="Syllabus Management" sub="Course → Module → Week → Day → Topic. Edit drafts freely; publishing never rewrites a batch's recorded progress." />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-9">
-        <Stat label="Courses" value={s.courses.length} /><Stat label="Modules" value={totals.modules} /><Stat label="Weeks" value={totals.weeks} /><Stat label="Days" value={totals.days} />
-        <Stat label="Topics" value={totals.topics} tone="blue" /><Stat label="Imported topics" value={totals.imported} tone="purple" /><Stat label="Missing topics" value={totals.missing} tone={totals.missing ? 'red' : 'green'} />
-        <Stat label="Duplicate topics" value={totals.dupes} tone={totals.dupes ? 'orange' : 'green'} /><Stat label="Days needing review" value={totals.review} tone={totals.review ? 'orange' : 'green'} sub={`< ${minPer} topics or issues`} />
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-ink-200/80 bg-white px-4 py-3 text-sm shadow-sm dark:border-ink-800 dark:bg-ink-900 dark:shadow-none sm:px-5">
+        {([['courses', s.courses.length], ['modules', totals.modules], ['weeks', totals.weeks], ['days', totals.days], ['topics', totals.topics], ['imported', totals.imported]] as const).map(([k, v]) => (
+          <span key={k} className="text-ink-500 dark:text-ink-400"><b className="font-semibold tabular-nums text-ink-900 dark:text-ink-50">{v}</b> {k}</span>
+        ))}
+        <span className="ml-auto flex flex-wrap gap-2">
+          {totals.missing > 0 && <Badge color="red">{totals.missing} missing topics</Badge>}
+          {totals.dupes > 0 && <Badge color="orange">{totals.dupes} duplicates</Badge>}
+          {totals.review > 0 && <Badge color="orange">{totals.review} days need review</Badge>}
+          {!totals.missing && !totals.dupes && !totals.review && <Badge color="green">No issues</Badge>}
+        </span>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[260px_1fr]">

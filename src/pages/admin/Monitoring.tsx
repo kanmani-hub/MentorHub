@@ -198,7 +198,6 @@ export function AuditLogs() {
   return (
     <div>
       <PageHeader title="Audit Logs" sub={`${s.audit.length} events · every change records who, what, before, after and why`} />
-      <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat label="Total events" value={s.audit.length} /><Stat label="Report events" value={s.audit.filter((a) => /report|correction/i.test(a.action)).length} tone="blue" /><Stat label="Syllabus events" value={s.audit.filter((a) => /syllabus/i.test(a.action)).length} tone="purple" /><Stat label="Corrections" value={s.audit.filter((a) => /correct/i.test(a.action)).length} tone="orange" /></div>
       <Card pad={false}>
         <div className="flex flex-wrap gap-2 border-b border-ink-100 p-3 dark:border-ink-800"><SearchBox value={q} onChange={setQ} placeholder="Search user, entity, reason…" /><Select id="au-type" value={type} onChange={(e) => setType(e.target.value)} className="!w-auto">{types.map((t) => <option key={t}>{t}</option>)}</Select></div>
         <Table head={['Timestamp', 'User', 'Action', 'Entity', 'Previous value', 'New value', 'Reason']} minW={1000} empty={!list.length && <Empty title="No matching events" />}>

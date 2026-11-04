@@ -20,7 +20,7 @@ export function TaskToggle({ b, date, nolId, dayNumber, index }: { b: Batch; dat
     <div className="inline-flex overflow-hidden rounded-md ring-1 ring-inset ring-ink-200 dark:ring-ink-700">
       {(['Completed', 'Not Completed'] as const).map((st) => (
         <button key={st} disabled={locked} onClick={() => set(b.id, date, nolId, dayNumber, index, st)} aria-pressed={c?.status === st}
-          className={cx('px-2 py-0.5 text-[11px] font-medium disabled:opacity-60', c?.status === st ? (st === 'Completed' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white') : 'bg-white text-ink-600 hover:bg-ink-50 dark:bg-ink-900 dark:text-ink-300')}>
+          className={cx('px-2 py-0.5 text-xs font-medium disabled:opacity-60', c?.status === st ? (st === 'Completed' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white') : 'bg-white text-ink-600 hover:bg-ink-50 dark:bg-ink-900 dark:text-ink-300')}>
           {st}
         </button>
       ))}
@@ -124,9 +124,9 @@ export function TrainerNolSummary({ batches, date }: { batches: Batch[]; date: s
           <button key={r.b.id} onClick={() => go({ page: 't-lesson', id: r.b.id })} className="rounded-xl border border-ink-200 p-3 text-left hover:border-royal-500/50 dark:border-ink-800">
             <div className="flex items-start justify-between gap-2"><div className="min-w-0"><div className="text-xs text-ink-500">{r.b.name} · {r.nd.nol.title.replace(/ – Notes of Lesson$/i, '')} v{r.nd.nol.version}</div><div className="font-medium text-ink-900 dark:text-ink-50">Day {r.nd.day.dayNumber} – {r.nd.day.title}</div></div><Target size={16} className="shrink-0 text-violet2-500" /></div>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-emerald-50 py-1.5 dark:bg-emerald-500/10"><div className="flex items-center justify-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-300"><CheckCircle2 size={12} />Tasks done</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.done}</div></div>
-              <div className="rounded-lg bg-amber-50 py-1.5 dark:bg-amber-500/10"><div className="flex items-center justify-center gap-1 text-[11px] text-amber-700 dark:text-amber-300"><Circle size={12} />Tasks pending</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.total - r.done}</div></div>
-              <div className="rounded-lg bg-royal-50 py-1.5 dark:bg-royal-500/10"><div className="flex items-center justify-center gap-1 text-[11px] text-royal-700 dark:text-blue-300"><XCircle size={12} className="hidden" />Topics done</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.topicsDone}/{r.topics}</div></div>
+              <div className="rounded-lg bg-emerald-50 py-1.5 dark:bg-emerald-500/10"><div className="flex items-center justify-center gap-1 text-xs text-emerald-700 dark:text-emerald-300"><CheckCircle2 size={12} />Tasks done</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.done}</div></div>
+              <div className="rounded-lg bg-amber-50 py-1.5 dark:bg-amber-500/10"><div className="flex items-center justify-center gap-1 text-xs text-amber-700 dark:text-amber-300"><Circle size={12} />Tasks pending</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.total - r.done}</div></div>
+              <div className="rounded-lg bg-royal-50 py-1.5 dark:bg-royal-500/10"><div className="flex items-center justify-center gap-1 text-xs text-royal-700 dark:text-blue-300"><XCircle size={12} className="hidden" />Topics done</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{r.topicsDone}/{r.topics}</div></div>
             </div>
           </button>
         ))}

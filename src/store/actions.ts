@@ -202,9 +202,7 @@ export const validateBatchForm = (s: AppState, batchId: string, f: BatchReportFo
   if (unmarked) e.attendance = `${unmarked} student(s) not marked.`;
   else if (noReason) e.attendance = `${noReason} absent / leave student(s) need a reason.`;
   else if (noTime) e.attendance = `${noTime} late student(s) need an arrival time.`;
-  if (!f.practicals.some((p) => p.text.trim())) e.practicals = 'Add at least one practical activity.';
   if (f.assignments.some((a) => !a.name.trim() || !a.deadline)) e.assignments = 'Each assignment needs a name and a deadline.';
-  if (f.projects.some((p) => !p.name.trim())) e.projects = 'Each project entry needs a project name.';
   if (s.settings.requireVoiceNote && date && !(s.waUpdates.find((w) => w.batchId === batchId && w.date === date)?.studentIds.length)) e.voiceNames = 'Add at least one student voice note (Student Voice Notes page).';
   return e;
 };

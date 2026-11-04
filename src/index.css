@@ -2,26 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Layout: fixed sidebar + scrolling main pane; navy chrome, cool grey canvas, royal-blue actions, purple accent */
+/*
+ * MentorHub theme.
+ * Light: soft off-white page, white cards, muted blue accents.
+ * Dark: deep slate page with lighter slate surfaces and off-white text (no pure black, no neon).
+ */
 :root {
-  --bg: #f6f7fa;
-  --fg: #141924;
-  --accent: #2552e0;
-  --chrome: #070f22;
-  --font-body: "IBM Plex Sans", system-ui, sans-serif;
-  --font-display: "Manrope", "IBM Plex Sans", system-ui, sans-serif;
+  --bg: #f5f6f8;
+  --fg: #1d222b;
+  --accent: #4a67b1;
+  --font-body: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #151a22; --fg: #e4e7ec; --accent: #8aa3d6; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #151a22; --fg: #e4e7ec; --accent: #8aa3d6; color-scheme: dark; }
 /* the app's own theme toggle wins over both */
-html:root.dark { --bg: #0e121b; --fg: #eceef3; --accent: #3b6cf6; color-scheme: dark; }
-html:root.light { --bg: #f6f7fa; --fg: #141924; --accent: #2552e0; color-scheme: light; }
+html:root.dark { --bg: #151a22; --fg: #e4e7ec; --accent: #8aa3d6; color-scheme: dark; }
+html:root.light { --bg: #f5f6f8; --fg: #1d222b; --accent: #4a67b1; color-scheme: light; }
 
 html, body, #root { height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; -webkit-font-smoothing: antialiased; }
-h1, h2, h3 { text-wrap: balance; }
-::selection { background: rgba(59, 108, 246, 0.22); }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body);
+  font-size: 14px; line-height: 1.5; font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.01em; }
+::selection { background: rgba(74, 103, 177, 0.2); }
+
+/* dark mode: brighter-than-surface text only where needed; soft off-white rather than pure white */
+.dark .text-white { color: #f1f3f6; }
+.dark ::selection { background: rgba(138, 163, 214, 0.28); }
+
+/* native controls follow the theme (date pickers, selects, scrollbars) */
+.dark input, .dark select, .dark textarea { color-scheme: dark; }
+.dark ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #2b323e; border-radius: 8px; border: 2px solid #151a22; }
+.dark ::-webkit-scrollbar-track { background: transparent; }
+
+/* expandable secondary details */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* names and links rendered as buttons inside table cells read left-aligned, like text */
+td > button { text-align: left; }

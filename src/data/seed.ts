@@ -1,6 +1,6 @@
 import { normalizeReports } from '../store/reviews';
 import type {
-  AppState, AttMark, Batch, Course, DailyActivity, DailyReport, Notification, Student, TopicProgress, Trainer, User, VoiceNote, WorkLog,
+  AppState, AttMark, Batch, Course, DailyActivity, DailyReport, Interview, Notification, Student, TopicProgress, Trainer, User, VoiceNote, WorkLog,
 } from '../types';
 import { addDays, prevWeekdays, todayISO, tsAt } from '../utils';
 import { SEED_NOTES } from './mockNotes';
@@ -101,7 +101,7 @@ export function createSeed(): AppState {
     attendance: [], progress: [], voice: [], work: [], checkins: [], activities: [], batchReports: [], reports: [],
     nols: [buildPythonFoundations(created).nol],
     files: [{ id: 'F-PF-1', name: PYTHON_FOUNDATIONS_PDF_NAME, size: Math.round((PYTHON_FOUNDATIONS_PDF_B64.length * 3) / 4), mime: 'application/pdf', courseId: 'C01', nolId: PF_NOL_ID, pages: 16, uploadedAt: created, uploadedBy: 'Lakshmi Narayanan' }],
-    taskChecks: [], lessonDays: [], waUpdates: [], notifications: [], audit: [], assignments: [], doubts: [],
+    taskChecks: [], lessonDays: [], waUpdates: [], interviews: [], notifications: [], audit: [], assignments: [], doubts: [],
     settings: {
       instituteName: 'Brightpath Tech Academy', instituteAddress: '3rd Floor, Olympia Tech Park, Guindy, Chennai 600032', instituteEmail: 'office@brightpath.edu.in', institutePhone: '+91 44 4012 7788',
       reportDeadline: '19:30', allowException: true, requireVoiceNote: false, lateThresholdMin: 10, attendanceLockAfterSubmit: true,
@@ -435,6 +435,42 @@ export function createSeed(): AppState {
     p.trainerId = bb.trainerId; p.updatedBy = trainerNameById(bb.trainerId);
     if (fd) { p.syllabusDayId = fd.day.id; p.dayNumber = fd.index + 1; }
   });
+  // ---- Interview Panel: a few completed mock interviews and some upcoming ones ----
+  {
+    const userOf = (tid: string) => state.users.find((u) => u.trainerId === tid);
+    const admin = state.users.find((u) => u.id === 'U01')!;
+    const plan: { b: string; n: number; type: Interview['type']; day: number; time: string; done?: [number, number, number, Interview['result'], string] }[] = [
+      { b: 'B01', n: 0, type: 'Technical', day: -6, time: '15:00', done: [4, 4, 3, 'Selected', 'Clear on variables and loops; practise explaining code aloud.'] },
+      { b: 'B01', n: 1, type: 'Mock', day: -4, time: '15:30', done: [3, 2, 3, 'Needs Improvement', 'Knows the syntax but hesitates; work on structured answers.'] },
+      { b: 'B01', n: 2, type: 'Communication', day: 1, time: '15:00' },
+      { b: 'B01', n: 3, type: 'Technical', day: 2, time: '16:00' },
+      { b: 'B02', n: 0, type: 'Technical', day: -3, time: '17:00', done: [5, 4, 4, 'Selected', 'Strong on Django models and views.'] },
+      { b: 'B02', n: 1, type: 'HR', day: 3, time: '11:00' },
+      { b: 'B03', n: 0, type: 'Technical', day: -2, time: '12:00', done: [3, 4, 3, 'Needs Improvement', 'Joins are fine; revise GROUP BY and HAVING.'] },
+      { b: 'B03', n: 1, type: 'Mock', day: 2, time: '12:30' },
+      { b: 'B05', n: 0, type: 'Technical', day: 1, time: '14:00' },
+    ];
+    for (const p of plan) {
+      const b = state.batches.find((x) => x.id === p.b); if (!b) continue;
+      const st = state.students.filter((x) => x.batchId === b.id)[p.n]; if (!st) continue;
+      const tu = userOf(b.trainerId); if (!tu) continue;
+      const date = addDays(today, p.day);
+      const at = tsAt(addDays(today, Math.min(p.day, 0) - 2), '10:00');
+      const iv: Interview = {
+        id: id('iv'), studentId: st.id, studentName: st.name, batchId: b.id, batchName: b.name, trainerId: b.trainerId, type: p.type, date, time: p.time,
+        mode: p.type === 'HR' ? 'Online' : 'In person', focus: p.type === 'Technical' ? 'Core concepts from the syllabus so far' : p.type === 'HR' ? 'Self-introduction, goals, strengths' : '',
+        panel: [{ id: tu.id, name: tu.name }, ...(p.type === 'HR' || p.type === 'Mock' ? [{ id: admin.id, name: admin.name }] : [])],
+        status: p.done ? 'Completed' : 'Scheduled', createdBy: tu.name, createdAt: at, updatedAt: at, history: [{ at, by: tu.name, action: 'Scheduled' }],
+      };
+      if (p.done) {
+        const [t, c, ps, result, feedback] = p.done;
+        const dt = tsAt(date, p.time);
+        Object.assign(iv, { scores: { technical: t, communication: c, problemSolving: ps }, result, feedback, updatedAt: dt });
+        iv.history.push({ at: dt, by: tu.name, action: `Result recorded: ${result}` });
+      }
+      state.interviews.push(iv);
+    }
+  }
   return normalizeReports(state);
 }
 

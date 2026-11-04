@@ -231,7 +231,7 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
             action={!attFrozen && !readOnly && <Button size="sm" variant="secondary" onClick={() => setF((p) => ({ ...p, marks: Object.fromEntries(studs.map((st) => [st.id, (p.marks[st.id] || 'Present') as AttMark])) }))}>Mark rest present</Button>}>
             <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
               {[['Total', studs.length], ['Present', count('Present')], ['Late', count('Late')], ['Absent', count('Absent')], ['Leave', count('Leave')], ['Attended', count('Present') + count('Late')]].map(([k, v]) => (
-                <div key={k} className="rounded-lg bg-ink-50 px-2.5 py-1.5 dark:bg-ink-800/50"><div className="text-[11px] text-ink-500">{k}</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{v}</div></div>
+                <div key={k} className="rounded-lg bg-ink-50 px-2.5 py-1.5 dark:bg-ink-800/50"><div className="text-xs text-ink-500">{k}</div><div className="font-display text-lg font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{v}</div></div>
               ))}
             </div>
             <ul className="divide-y divide-ink-100 rounded-lg border border-ink-200 dark:divide-ink-800 dark:border-ink-800">
@@ -254,18 +254,7 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
             <p className="mt-2 text-xs text-ink-500">Only students assigned to {b.name} are listed. Attendance is submitted together with this batch report.</p>
           </Step>
 
-          <Step n={3} title="Practical activities conducted" error={errors.practicals}>
-            {f.practicals.length > 0 && <ul className="mb-3 space-y-2">{f.practicals.map((p) => (
-              <li key={p.id} className="flex flex-col gap-2 sm:flex-row">
-                <Select value={p.type} disabled={readOnly} onChange={(e) => set('practicals', f.practicals.map((x) => (x.id === p.id ? { ...x, type: e.target.value as typeof p.type } : x)))} className="sm:w-48">{PRACTICAL_TYPES.map((x) => <option key={x}>{x}</option>)}</Select>
-                <Input value={p.text} disabled={readOnly} onChange={(e) => set('practicals', f.practicals.map((x) => (x.id === p.id ? { ...x, text: e.target.value } : x)))} placeholder="What was done" />
-                {!readOnly && <Button variant="ghost" aria-label="Delete activity" onClick={() => set('practicals', f.practicals.filter((x) => x.id !== p.id))}><Trash2 size={15} /></Button>}
-              </li>
-            ))}</ul>}
-            {!readOnly && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => set('practicals', [...f.practicals, { id: uid('pi'), type: 'Practical exercise', text: '' }])}>Add activity</Button>}
-          </Step>
-
-          <Step n={4} title="Homework / assignments given" sub="Optional" error={errors.assignments}>
+          <Step n={3} title="Homework / assignments given" sub="Optional" error={errors.assignments}>
             {f.assignments.length > 0 && <div className="mb-3 space-y-3">{f.assignments.map((a) => (
               <div key={a.id} className="grid gap-2 rounded-lg border border-ink-200 p-3 sm:grid-cols-[1fr_160px_auto] dark:border-ink-800">
                 <Input value={a.name} disabled={readOnly} onChange={(e) => set('assignments', f.assignments.map((x) => (x.id === a.id ? { ...x, name: e.target.value } : x)))} placeholder="Assignment name" />
@@ -277,52 +266,20 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
             {!readOnly && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => set('assignments', [...f.assignments, { id: uid('ai'), name: '', description: '', deadline: '' }])}>Add assignment</Button>}
           </Step>
 
-          <Step n={5} title="Student doubts or difficulties" sub="Optional">
-            {f.doubts.length > 0 && <ul className="mb-3 space-y-2">{f.doubts.map((d) => (
-              <li key={d.id} className="flex flex-col gap-2 sm:flex-row">
-                <Select value={d.type} disabled={readOnly} onChange={(e) => set('doubts', f.doubts.map((x) => (x.id === d.id ? { ...x, type: e.target.value as typeof d.type } : x)))} className="sm:w-52">{DOUBT_TYPES.map((x) => <option key={x}>{x}</option>)}</Select>
-                <Input value={d.text} disabled={readOnly} onChange={(e) => set('doubts', f.doubts.map((x) => (x.id === d.id ? { ...x, text: e.target.value } : x)))} placeholder="Describe the doubt or difficulty" />
-                {!readOnly && <Button variant="ghost" aria-label="Delete doubt" onClick={() => set('doubts', f.doubts.filter((x) => x.id !== d.id))}><Trash2 size={15} /></Button>}
-              </li>
-            ))}</ul>}
-            {!readOnly && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => set('doubts', [...f.doubts, { id: uid('di'), type: 'Question asked', text: '' }])}>Add entry</Button>}
-          </Step>
-
-          <Step n={6} title="Student Voice Notes" sub="Taken from your saved Student Voice Notes for this batch and class date, so you do not enter them twice" error={errors.voiceNames}
+          <Step n={4} title="Student Voice Notes" sub="Taken from your saved Student Voice Notes for this batch and class date, so you do not enter them twice" error={errors.voiceNames}
             action={!dayLocked && <Button size="sm" variant="secondary" onClick={() => go('t-voice')}>Edit voice notes</Button>}>
             {(() => {
               const wa = s.waUpdates.find((w) => w.batchId === b.id && w.date === date);
               const nameOf = (id: string) => s.students.find((x) => x.id === id)?.name ?? id;
               return wa?.studentIds.length ? (
                 <ul className="space-y-1 text-sm">{wa.studentIds.map((id) => { const vn = wa.voiceNotes?.find((x) => x.studentId === id); return (
-                  <li key={id} className="flex items-start gap-2"><MessageCircle size={14} className="mt-0.5 shrink-0 text-emerald-600" /><span className="min-w-0 flex-1 text-ink-900 dark:text-ink-50">{nameOf(id)}{vn?.title ? <span className="text-ink-600 dark:text-ink-300"> – {vn.title}</span> : <span className="text-xs italic text-ink-400"> – no description</span>}</span><span className="text-[11px] text-ink-400">{fmtDate((vn?.submittedAt ?? date).slice(0, 10))}</span></li>
+                  <li key={id} className="flex items-start gap-2"><MessageCircle size={14} className="mt-0.5 shrink-0 text-emerald-600" /><span className="min-w-0 flex-1 text-ink-900 dark:text-ink-50">{nameOf(id)}{vn?.title ? <span className="text-ink-600 dark:text-ink-300"> – {vn.title}</span> : <span className="text-xs italic text-ink-400"> – no description</span>}</span><span className="text-xs text-ink-400">{fmtDate((vn?.submittedAt ?? date).slice(0, 10))}</span></li>
                 ); })}</ul>
               ) : <p className="text-sm italic text-ink-400">No student voice notes saved for this batch on {fmtDate(date)}.</p>;
             })()}
           </Step>
 
-          <Step n={7} title="Project work / assignment" sub="Optional · one entry per project" error={errors.projects}>
-            {f.projects.length > 0 && <div className="mb-3 space-y-3">{f.projects.map((p) => {
-              const up = (patch: Partial<typeof p>) => set('projects', f.projects.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
-              return (
-                <div key={p.id} className="grid gap-2 rounded-lg border border-ink-200 p-3 sm:grid-cols-2 dark:border-ink-800">
-                  <Field label="Project name" required><Input value={p.name} disabled={readOnly} onChange={(e) => up({ name: e.target.value })} /></Field>
-                  <Field label="Project status"><Select value={p.status} disabled={readOnly} onChange={(e) => up({ status: e.target.value as typeof p.status })}>{PROJECT_STATUSES.map((x) => <option key={x}>{x}</option>)}</Select></Field>
-                  <Field label="Work completed today"><Input value={p.workDone} disabled={readOnly} onChange={(e) => up({ workDone: e.target.value })} placeholder="What you worked on or explained" /></Field>
-                  <Field label="Project assigned"><Input value={p.assigned} disabled={readOnly} onChange={(e) => up({ assigned: e.target.value })} placeholder="Task given to students" /></Field>
-                  <Field label="Students assigned"><Input value={p.students} disabled={readOnly} onChange={(e) => up({ students: e.target.value })} placeholder="Names or team names" /></Field>
-                  <Field label="Remarks"><Input value={p.remarks} disabled={readOnly} onChange={(e) => up({ remarks: e.target.value })} /></Field>
-                  {!readOnly && <div className="sm:col-span-2 text-right"><Button size="sm" variant="ghost" icon={<Trash2 size={14} />} onClick={() => set('projects', f.projects.filter((x) => x.id !== p.id))}>Remove project</Button></div>}
-                </div>
-              );
-            })}</div>}
-            {!readOnly && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => set('projects', [...f.projects, { id: uid('pj'), name: '', workDone: '', assigned: '', students: '', status: 'In Progress', remarks: '' }])}>Add project entry</Button>}
-          </Step>
-
-          <Step n={8} title="Additional remarks" sub="Optional">
-            <Textarea rows={3} value={f.remarks} disabled={readOnly} onChange={(e) => set('remarks', e.target.value)} placeholder="Anything else admin should know about this batch or class" />
-          </Step>
-        </div>
+                            </div>
 
         <div className="hidden xl:block">
           <div className="sticky top-4 space-y-3">
@@ -330,9 +287,8 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
               <ul className="space-y-1.5 text-sm">
                 {[['Topic progress', !unmarkedTopics.length && !tvals.some(([, v]) => v.status && v.status !== 'Completed' && v.reason.trim().length < 5), 1],
                   ['Attendance', studs.every((st) => f.marks[st.id]) && !studs.some((st) => ((f.marks[st.id] === 'Absent' || f.marks[st.id] === 'Leave') && !(f.reasons[st.id] ?? '').trim()) || (f.marks[st.id] === 'Late' && !f.lateTimes[st.id])), 2],
-                  ['Practical activities', f.practicals.some((p) => p.text.trim()), 3],
-                  ['Assignments', !f.assignments.some((a) => !a.name.trim() || !a.deadline), 4],
-                  ['Doubts', true, 5], ['Student voice notes', !s.settings.requireVoiceNote || !!s.waUpdates.find((w) => w.batchId === b.id && w.date === date)?.studentIds.length, 6], ['Project work', !f.projects.some((p) => !p.name.trim()), 7], ['Remarks', true, 8]].map(([k, ok, n]) => (
+                  ['Assignments', !f.assignments.some((a) => !a.name.trim() || !a.deadline), 3],
+                  ['Student voice notes', !s.settings.requireVoiceNote || !!s.waUpdates.find((w) => w.batchId === b.id && w.date === date)?.studentIds.length, 4]].map(([k, ok, n]) => (
                   <li key={k as string}><button onClick={() => document.getElementById(`brs-${n}`)?.scrollIntoView({ behavior: 'smooth' })} className="flex w-full items-center gap-2 text-left hover:text-royal-600">{ok ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertCircle size={15} className="text-amber-500" />}<span className="text-ink-700 dark:text-ink-200">{k as string}</span></button></li>
                 ))}
               </ul>

@@ -76,7 +76,7 @@ export function TopicDetail({ k, backTo }: { k: string; backTo: string }) {
   const myBatch = s.batches.find((b) => b.courseId === courseId);
   const supNotes = s.supplemental.filter((n) => n.topicKey === k);
   const block = (label: string, body?: string, mono = false) => body ? (
-    <div><div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{label}</div>
+    <div><div className="text-xs font-semibold text-ink-400">{label}</div>
       {mono ? <pre className="mt-1 overflow-x-auto rounded-lg bg-navy-950 p-3 font-mono text-[12.5px] leading-relaxed text-blue-50">{body}</pre> : <p className="mt-1 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink-800 dark:text-ink-100">{body}</p>}
     </div>
   ) : null;
@@ -91,7 +91,7 @@ export function TopicDetail({ k, backTo }: { k: string; backTo: string }) {
           <Tabs value={tab} onChange={setTab} tabs={[{ id: 'overview', label: 'Overview' }, { id: 'explanation', label: 'Explanation' }, { id: 'code', label: 'Code' }, { id: 'practical', label: 'Practical', count: note.practical.length }, { id: 'interview', label: 'Interview Questions', count: note.interview.length }, { id: 'homework', label: 'Homework' }, { id: 'attachments', label: 'Attachments', count: note.attachments.length }]} />
           <div className="space-y-4">
             {tab === 'overview' && <>
-              <div className="rounded-xl bg-gradient-to-br from-navy-50 to-violet2-50 p-4 dark:from-navy-600/15 dark:to-violet2-500/10"><div className="text-[11px] font-semibold uppercase tracking-wider text-violet2-600 dark:text-violet-300">In one line</div><p className="mt-1 font-display text-lg font-bold text-ink-900 dark:text-ink-50">{note.definition}</p></div>
+              <div className="rounded-xl bg-gradient-to-br from-navy-50 to-violet2-50 p-4 dark:from-navy-600/15 dark:to-violet2-500/10"><div className="text-xs font-semibold text-violet2-600 dark:text-violet-300">In one line</div><p className="mt-1 font-display text-lg font-bold text-ink-900 dark:text-ink-50">{note.definition}</p></div>
               {block('Why we use it', note.why)}
               {block('Real-time example', note.example)}
             </>}

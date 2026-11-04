@@ -7,12 +7,13 @@ import { normalizeReports } from './reviews';
 
 const KEY = 'trainerhub.state.v7';
 const SESSION_KEY = 'trainerhub.session.v7';
+const ROUTE_KEY = 'trainerhub.route';
 
 const load = (): AppState => {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return normalizeReports(JSON.parse(raw) as AppState);
-  } catch { /* storage unavailable */ }
+  } catch (e) { console.error('[TrainerHub] could not load saved data, starting from sample data', e); }
   return createSeed();
 };
 
@@ -45,7 +46,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string | null>(() => {
     try { return localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY); } catch { return null; }
   });
-  const [route, setRoute] = useState<Route>({ page: 'dashboard' });
+  // the open page is remembered per browser tab, so a refresh returns to it (the router's role guard still applies)
+  const [route, setRoute] = useState<Route>(() => {
+    try {
+      const signedIn = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
+      const saved = signedIn ? sessionStorage.getItem(ROUTE_KEY) : null;
+      if (saved) { const r = JSON.parse(saved) as Route; if (r && typeof r.page === 'string') return r; }
+    } catch { /* ignore */ }
+    return { page: 'dashboard' };
+  });
+  useEffect(() => { try { sessionStorage.setItem(ROUTE_KEY, JSON.stringify(route)); } catch { /* ignore */ } }, [route]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [storageOk, setStorageOk] = useState(true);
   const [dark, setDarkState] = useState<boolean>(() => {
@@ -83,7 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const first = useRef(true);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
-    try { localStorage.setItem(KEY, JSON.stringify(raw)); setStorageOk(true); } catch { setStorageOk(false); }
+    try { localStorage.setItem(KEY, JSON.stringify(raw)); setStorageOk(true); } catch (e) { console.error('[TrainerHub] could not save data in this browser', e); setStorageOk(false); }
   }, [raw]);
 
   const user = useMemo(() => raw.users.find((u) => u.id === userId) ?? null, [raw.users, userId]);
@@ -134,7 +144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
   const logout = () => {
     setUserId(null);
-    try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+    try { localStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(SESSION_KEY); sessionStorage.removeItem(ROUTE_KEY); } catch { /* ignore */ }
     setRoute({ page: 'dashboard' });
   };
   const go = (r: Route | string) => {

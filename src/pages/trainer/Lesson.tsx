@@ -166,19 +166,19 @@ export function TodaysLesson({ batchId }: { batchId?: string }) {
             action={file && nd && <Button size="sm" variant="secondary" icon={<FileText size={14} />} onClick={() => setPdf(true)}>Original PDF{nd.page ? ` · p.${nd.page}` : ''}</Button>}>
             <div className="grid gap-4 lg:grid-cols-3">
               <div className="min-w-0 lg:col-span-1">
-                <div className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-royal-600 dark:text-blue-300"><BookOpen size={15} />1. Topics to Cover</div>
+                <div className="mb-1 flex items-center gap-1.5 text-xs font-bold text-royal-600 dark:text-blue-300"><BookOpen size={15} />1. Topics to Cover</div>
                 <ul className="divide-y divide-ink-100 dark:divide-ink-800">
                   {dayTopics.map((t) => <TopicLine key={`${t.key}-${date}`} t={t} saved={savedOf(t)} draft={drafts[t.key]} locked={locked} onApply={(d) => setDrafts((x) => ({ ...x, [t.key]: d }))} />)}
                 </ul>
               </div>
               <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-violet2-600 dark:text-violet-300"><Target size={15} />2. Learning Objectives</div>
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-violet2-600 dark:text-violet-300"><Target size={15} />2. Learning Objectives</div>
                 {nd ? <ul className="space-y-1.5">{nd.objectives.map((o, i) => <li key={i} className="flex gap-2 text-sm text-ink-800 dark:text-ink-100"><span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-ink-400" />{o}</li>)}</ul> : <div className="text-sm text-ink-500">No Notes of Lesson assigned to this batch.</div>}
               </div>
               <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300"><ClipboardList size={15} />3. Student Tasks {nd && <span className="font-normal normal-case tracking-normal text-ink-500">· {checks.filter((c) => c.status === 'Completed').length}/{nd.tasks.length} completed</span>}</div>
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300"><ClipboardList size={15} />3. Student Tasks {nd && <span className="font-normal normal-case tracking-normal text-ink-500">· {checks.filter((c) => c.status === 'Completed').length}/{nd.tasks.length} completed</span>}</div>
                 {nd ? <ol className="space-y-2">{nd.tasks.map((t, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-ink-800 dark:text-ink-100"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{i + 1}</span>
+                  <li key={i} className="flex gap-2 text-sm text-ink-800 dark:text-ink-100"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{i + 1}</span>
                     <span className="min-w-0 flex-1">{t}<div className="mt-1"><TaskToggle b={b} date={date} nolId={nol!.id} dayNumber={nd.dayNumber} index={i} /></div></span></li>
                 ))}</ol> : <div className="text-sm text-ink-500">No Notes of Lesson assigned to this batch.</div>}
               </div>

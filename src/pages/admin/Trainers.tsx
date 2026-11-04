@@ -116,7 +116,7 @@ export default function Trainers() {
                   <Menu items={[
                     { label: 'View details', onClick: () => go({ page: 'trainer', id: t.id }) },
                     { label: 'Edit trainer', onClick: () => setForm({ open: true, t }) },
-                    { label: 'Assign batch', onClick: () => go({ page: 'assignments', id: t.id }) },
+                    { label: 'Assign batch', onClick: () => go('batches') },
                     { label: 'View daily reports', onClick: () => go({ page: 'trainer', id: t.id, tab: 'reports' }) },
                     { label: t.status === 'Active' ? 'Deactivate' : 'Activate', onClick: () => setConfirm(t), danger: t.status === 'Active' },
                   ]} />
@@ -153,7 +153,7 @@ export function TrainerDetail({ id, tab: initialTab }: { id: string; tab?: strin
   const logs = s.work.filter((w) => w.trainerId === t.id).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
   return (
     <div>
-      <PageHeader back={() => go('trainers')} title={t.name} sub={`${t.designation} · ${t.id}`} actions={<><Button variant="secondary" onClick={() => setEdit(true)}>Edit</Button><Button onClick={() => go({ page: 'assignments', id: t.id })}>Assign batch</Button></>} />
+      <PageHeader back={() => go('trainers')} title={t.name} sub={`${t.designation} · ${t.id}`} actions={<><Button variant="secondary" onClick={() => setEdit(true)}>Edit</Button><Button onClick={() => go('batches')}>Assign batch</Button></>} />
       <div className="grid gap-3 md:grid-cols-3">
         <Card><div className="text-sm font-semibold text-ink-800 dark:text-ink-100">Syllabus progress</div><div className="mt-1 font-display text-3xl font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{sp.pct}%</div><Progress value={sp.pct} /><div className="mt-1.5 text-xs text-ink-500">{sp.completed} of {sp.total} topics across {bs.length} batch(es)</div></Card>
         <Card><div className="text-sm font-semibold text-ink-800 dark:text-ink-100">Daily work completion · today</div><div className="mt-1 font-display text-3xl font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{dw.pct}%</div><Progress value={dw.pct} tone="purple" /><div className="mt-1.5 text-xs text-ink-500">{dw.done} of {dw.required} required activities</div></Card>
@@ -184,7 +184,7 @@ export function TrainerDetail({ id, tab: initialTab }: { id: string; tab?: strin
         )}
         {tab === 'batches' && (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {bs.length === 0 && <Card className="md:col-span-3"><Empty title="No batches assigned" action={<Button onClick={() => go({ page: 'assignments', id: t.id })}>Assign a batch</Button>} /></Card>}
+            {bs.length === 0 && <Card className="md:col-span-3"><Empty title="No batches assigned" action={<Button onClick={() => go('batches')}>Assign in Batch Management</Button>} /></Card>}
             {bs.map((b) => { const p = batchProgress(s, b); return (
               <Card key={b.id}><button className="w-full text-left" onClick={() => go({ page: 'batch', id: b.id })}>
                 <div className="flex items-center justify-between"><div className="font-display font-bold text-ink-900 dark:text-ink-50">{b.name}</div><Badge>{b.status}</Badge></div>

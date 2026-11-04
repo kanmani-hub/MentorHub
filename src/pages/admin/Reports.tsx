@@ -204,7 +204,7 @@ export function AssignedReports() {
               <td className="whitespace-nowrap">{fmtDate(r.date)}</td>
               <td className="whitespace-nowrap text-xs">{fmtDateTime(r.versions.at(-1)!.submittedAt)}{r.versions.length > 1 && <Badge color="purple" dot={false}>v{r.versions.length}</Badge>}</td>
               <td className="max-w-[200px] text-xs">{versionReviewerIds(r).map((id) => <span key={id} className={cx('mr-1 inline-block', id === me && 'font-semibold text-ink-900 dark:text-ink-50')}>{name(id)}{id === me ? ' (you)' : ''}</span>)}</td>
-              <td className="whitespace-nowrap"><Badge>{r.status}</Badge><div className="mt-0.5 text-[11px] text-ink-500">{prog.approved} of {prog.total} approved · you: {my.mine ? my.mine.action : my.awaiting ? 'pending' : '—'}</div></td>
+              <td className="whitespace-nowrap"><Badge>{r.status}</Badge><div className="mt-0.5 text-xs text-ink-500">{prog.approved} of {prog.total} approved · you: {my.mine ? my.mine.action : my.awaiting ? 'pending' : '—'}</div></td>
               <td className="text-right"><Button size="sm" variant={my.awaiting ? 'primary' : 'secondary'} onClick={() => go({ page: 'report', id: r.id })}>{my.awaiting ? 'Review' : 'Open'}</Button></td>
             </tr>
           ))}
@@ -372,7 +372,7 @@ export default function Reports({ approvals = false }: { approvals?: boolean }) 
                 </td>
                 <td>
                   <Badge>{st}</Badge>
-                  {r && r.versions.length > 0 && <div className="mt-0.5 text-[11px] text-ink-500">{reviewProgress(r).approved}/{reviewProgress(r).total} approved · {versionReviewerIds(r).map((id) => s.users.find((u) => u.id === id)?.name.split(' ')[0] ?? '?').join(', ')}</div>}
+                  {r && r.versions.length > 0 && <div className="mt-0.5 text-xs text-ink-500">{reviewProgress(r).approved}/{reviewProgress(r).total} approved · {versionReviewerIds(r).map((id) => s.users.find((u) => u.id === id)?.name.split(' ')[0] ?? '?').join(', ')}</div>}
                 </td>
                 <td className="whitespace-nowrap">
                   {last && (
@@ -635,7 +635,7 @@ export function ReportDetail({ id }: { id: string }) {
       {/* 3. Batch-wise reports */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">Batch-wise Reports ({snap.batches.length})</h2>
+          <h2 className="text-xs font-bold text-ink-500 dark:text-ink-400">Batch-wise Reports ({snap.batches.length})</h2>
           {snap.batches.length > 1 && (
             <div className="inline-flex flex-wrap rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">
               {[{ id: 'all', label: 'All batches' }, ...snap.batches.map((b) => ({ id: b.batchId, label: b.batchName }))].map((o) => (
@@ -644,7 +644,7 @@ export function ReportDetail({ id }: { id: string }) {
             </div>
           )}
         </div>
-        {shown.length ? shown.map((b) => <BatchBlock key={b.batchId} b={b} reportDate={r.date} />) : <Card><Empty title="No batches in this report" /></Card>}
+        {shown.length ? shown.map((b) => <BatchBlock key={b.batchId} b={b} reportDate={r.date} adminView />) : <Card><Empty title="No batches in this report" /></Card>}
         {snap.remarks && <div className="rounded-xl border border-ink-200 bg-white p-4 text-sm dark:border-ink-800 dark:bg-ink-900"><span className="font-semibold text-ink-700 dark:text-ink-200">Trainer's overall remarks: </span>{snap.remarks}</div>}
       </div>
 
@@ -678,7 +678,7 @@ export function ReportDetail({ id }: { id: string }) {
                 <Textarea id="admin-review-remark" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)}
                   placeholder={canDecide ? 'Write remarks for the trainer. This text is also used as the reason when you request a correction or reject.' : 'Add a remark for the trainer'} />
               </Field>
-              {canDecide && latest && <p className="mt-1 text-[11.5px] text-ink-500">A reason is required to request a correction or reject. Approve works with or without remarks.</p>}
+              {canDecide && latest && <p className="mt-1 text-xs text-ink-500">A reason is required to request a correction or reject. Approve works with or without remarks.</p>}
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <Button size="sm" variant="secondary" disabled={!text} onClick={saveRemark}>Save Remarks</Button>
@@ -712,7 +712,7 @@ export function ReportDetail({ id }: { id: string }) {
       </div>
 
       {el}
-      {exp && <ExportModal open onClose={() => setExp(false)} snapshot={v.snapshot} />}
+      {exp && <ExportModal open onClose={() => setExp(false)} snapshot={v.snapshot} adminView />}
     </div>
   );
 }

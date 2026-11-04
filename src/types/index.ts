@@ -475,6 +475,35 @@ export interface Settings {
 
 export interface Route { page: string; id?: string; tab?: string }
 
+export type InterviewType = 'Technical' | 'HR' | 'Mock' | 'Communication';
+export type InterviewStatus = 'Scheduled' | 'Completed' | 'Cancelled';
+export type InterviewResult = 'Selected' | 'Needs Improvement' | 'Not Selected';
+export interface InterviewScores { technical: number; communication: number; problemSolving: number }
+/** a mock / practice interview for one student; names are kept as snapshots so history reads correctly later */
+export interface Interview {
+  id: string;
+  studentId: string;
+  studentName: string;
+  batchId: string;
+  batchName: string;
+  trainerId: string;
+  type: InterviewType;
+  date: string;
+  time: string;
+  mode: 'In person' | 'Online';
+  focus: string;
+  /** panel members: trainer or admin users */
+  panel: { id: string; name: string }[];
+  status: InterviewStatus;
+  scores?: InterviewScores;
+  result?: InterviewResult;
+  feedback?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  history: { at: string; by: string; action: string; note?: string }[];
+}
+
 export interface AppState {
   users: User[];
   trainers: Trainer[];
@@ -496,6 +525,7 @@ export interface AppState {
   taskChecks: TaskCheck[];
   lessonDays: LessonDaySelection[];
   waUpdates: WhatsAppUpdate[];
+  interviews: Interview[];
   reports: DailyReport[];
   notifications: Notification[];
   audit: AuditLog[];

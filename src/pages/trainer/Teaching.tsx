@@ -78,8 +78,8 @@ function TopicRow({ b, t, date, origin, locked }: { b: Batch; t: Topic; date: st
           {note ? (
             <div className="space-y-3">
               <p className="text-ink-800 dark:text-ink-100"><b>Definition:</b> {note.definition}</p>
-              {note.code && <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-400">Code example</div><pre className="overflow-x-auto rounded-lg bg-navy-950 p-3 font-mono text-xs text-blue-50">{note.code}</pre></div>}
-              {note.practical.length > 0 && <div><div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Practical questions</div><ul className="mt-1 list-disc pl-5 text-ink-700 dark:text-ink-200">{note.practical.map((p) => <li key={p}>{p}</li>)}</ul></div>}
+              {note.code && <div><div className="mb-1 text-xs font-semibold text-ink-400">Code example</div><pre className="overflow-x-auto rounded-lg bg-navy-950 p-3 font-mono text-xs text-blue-50">{note.code}</pre></div>}
+              {note.practical.length > 0 && <div><div className="text-xs font-semibold text-ink-400">Practical questions</div><ul className="mt-1 list-disc pl-5 text-ink-700 dark:text-ink-200">{note.practical.map((p) => <li key={p}>{p}</li>)}</ul></div>}
               {note.homework && <p className="text-ink-700 dark:text-ink-200"><b>Homework:</b> {note.homework}</p>}
               <div className="flex flex-wrap gap-2">
                 {note.attachments.map((a) => { const I = a.kind === 'PPT' ? Presentation : a.kind === 'PDF' ? FileText : Code2; return <button key={a.name} onClick={() => toast('Attachments open from the backend file store. Only the file name is kept in this prototype.', 'info')} className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs ring-1 ring-ink-200 dark:bg-ink-900 dark:ring-ink-700"><I size={13} />{a.name}</button>; })}
@@ -120,7 +120,7 @@ export function TodaysLesson({ batchId }: { batchId?: string }) {
           <Card>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-xs font-semibold uppercase tracking-wider text-violet2-600 dark:text-violet-300">Day {plan.dayNumber} of {plan.totalDays}</div>
+                <div className="text-xs font-semibold text-violet2-600 dark:text-violet-300">Day {plan.dayNumber} of {plan.totalDays}</div>
                 <h2 className="font-display text-xl font-extrabold text-ink-900 dark:text-ink-50">{plan.flat?.day.title}</h2>
                 <div className="mt-1 text-sm text-ink-500">{courseName(s, b.courseId)} · {b.name} · {plan.flat?.moduleTitle} · {plan.flat?.weekTitle} · syllabus v{v?.version}</div>
               </div>
@@ -143,7 +143,6 @@ export function TodaysLesson({ batchId }: { batchId?: string }) {
               <div className="flex items-center justify-between"><span className="text-ink-600 dark:text-ink-300">Attendance</span>{att?.status === 'Submitted' ? <Badge>Submitted</Badge> : <Button size="sm" variant="secondary" icon={<Users size={13} />} onClick={() => go({ page: 't-attendance', id: b.id })}>Mark</Button>}</div>
               <div className="flex items-center justify-between"><span className="text-ink-600 dark:text-ink-300">Topics updated</span><span className="tabular-nums text-ink-900 dark:text-ink-100">{recs.length}/{plan.topics.length + plan.carryOver.length}</span></div>
               <div><div className="mb-1 flex justify-between text-xs text-ink-500"><span>Completed today</span><span>{recs.filter((r) => r.status === 'Completed').length}</span></div><Progress value={pct(recs.filter((r) => r.status === 'Completed').length, plan.topics.length + plan.carryOver.length)} tone="green" label /></div>
-              <Button className="w-full" variant="secondary" onClick={() => go({ page: 't-progress', id: b.id })}>Update topic progress</Button>
               <Button className="w-full" onClick={() => go({ page: 't-batch-report', id: b.id })}>Open batch report</Button>
             </div>
           </Card>
@@ -252,9 +251,9 @@ export function TopicProgressPage({ batchId }: { batchId?: string }) {
         <div className="mb-3"><Progress value={pct(completed, total)} tone="green" size="sm" /></div>
         {carried.length > 0 && (
           <>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Carried over ({carried.length})</div>
+            <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">Carried over ({carried.length})</div>
             <ul className="mb-3 divide-y divide-ink-100 dark:divide-ink-800">{carried.map((c) => <TopicBullet key={`${c.topic.key}-${date}`} b={b} t={c.topic} date={date} carried={`Day ${c.dayNumber} – ${c.dayTitle}`} locked={locked} />)}</ul>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-400">Today ({today.length})</div>
+            <div className="text-xs font-semibold text-ink-400">Today ({today.length})</div>
           </>
         )}
         <ul className="divide-y divide-ink-100 dark:divide-ink-800">{today.map((t) => <TopicBullet key={`${t.key}-${date}`} b={b} t={t} date={date} locked={locked} />)}</ul>

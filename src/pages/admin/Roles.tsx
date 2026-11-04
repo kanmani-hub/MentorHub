@@ -50,7 +50,7 @@ export default function Roles() {
     <div>
       <PageHeader title="User Roles & Permissions" sub="Who can sign in, with which role, and what each role may see and change" />
       <div className="mb-4 grid grid-cols-3 gap-3">
-        {(['admin', 'trainer', 'student'] as Role[]).map((r) => <div key={r} className="rounded-xl border border-ink-200 bg-white p-3.5 dark:border-ink-800 dark:bg-ink-900"><div className="text-xs capitalize text-ink-500">{r} accounts</div><div className="font-display text-2xl font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{raw.users.filter((u) => u.role === r).length}</div><div className="text-[11.5px] text-ink-500">{raw.users.filter((u) => u.role === r && u.active).length} active</div></div>)}
+        {(['admin', 'trainer', 'student'] as Role[]).map((r) => <div key={r} className="rounded-xl border border-ink-200 bg-white p-3.5 dark:border-ink-800 dark:bg-ink-900"><div className="text-xs capitalize text-ink-500">{r} accounts</div><div className="font-display text-2xl font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{raw.users.filter((u) => u.role === r).length}</div><div className="text-xs text-ink-500">{raw.users.filter((u) => u.role === r && u.active).length} active</div></div>)}
       </div>
       <Tabs value={tab} onChange={setTab} tabs={[{ id: 'users', label: 'Users', count: raw.users.length }, { id: 'matrix', label: 'Role permissions' }, { id: 'trainer', label: 'Trainer & student options' }]} />
       {tab === 'users' && (

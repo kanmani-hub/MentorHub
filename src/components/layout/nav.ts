@@ -1,38 +1,49 @@
 import {
   BarChart3, KeyRound, BookOpen, BookText, CalendarCheck, ClipboardCheck, ClipboardList, Clock, FileCheck2, FileText, GraduationCap, History, LayoutDashboard,
-  ListChecks, Mic, NotebookPen, Settings, ShieldCheck, TrendingUp, UserCircle, UserCog, Users, Layers, HelpCircle, Award, PenSquare,
+  Mic, NotebookPen, Settings, ShieldCheck, TrendingUp, UserCircle, UserCog, Users, Layers, HelpCircle, Award, PenSquare,
 } from 'lucide-react';
 import type { Role } from '../../types';
 
 export interface NavItem { id: string; label: string; icon: typeof Users; group?: string }
 
-/** Admin Portal — exactly 15 main modules (sub-pages open as tabs inside them) */
+/** Admin Portal pages (14). The sidebar groups them into the 6 modules in ADMIN_SECTIONS; page ids and routes are unchanged. */
 export const ADMIN_NAV: NavItem[] = [
-  { id: 'dashboard', label: 'Admin Dashboard', icon: LayoutDashboard, group: 'Overview' },
+  { id: 'dashboard', label: 'Admin Dashboard', icon: LayoutDashboard, group: 'Dashboard' },
   { id: 'courses', label: 'Course Management', icon: BookOpen, group: 'Academics' },
   { id: 'syllabus', label: 'Syllabus Management', icon: Layers, group: 'Academics' },
-  { id: 'trainers', label: 'Trainer Management', icon: UserCog, group: 'Academics' },
-  { id: 'batches', label: 'Batch Management', icon: GraduationCap, group: 'Academics' },
-  { id: 'students', label: 'Student Management', icon: Users, group: 'Academics' },
-  { id: 'assignments', label: 'Trainer-Batch Assignment', icon: ClipboardList, group: 'Academics' },
-  { id: 'attendance', label: 'Attendance Management', icon: CalendarCheck, group: 'Daily Work' },
-  { id: 'reports', label: 'Daily Reports Management', icon: FileText, group: 'Daily Work' },
-  { id: 'syl-progress', label: 'Topic Progress Monitoring', icon: TrendingUp, group: 'Daily Work' },
-  { id: 'analytics', label: 'Trainer Performance & Analytics', icon: BarChart3, group: 'Insights' },
-  { id: 'exports', label: 'Reports & Export', icon: FileCheck2, group: 'Insights' },
-  { id: 'roles', label: 'User Roles & Permissions', icon: KeyRound, group: 'System' },
-  { id: 'audit', label: 'Audit Logs', icon: ShieldCheck, group: 'System' },
-  { id: 'settings', label: 'Settings', icon: Settings, group: 'System' },
+  { id: 'trainers', label: 'Trainer Management', icon: UserCog, group: 'People Management' },
+  { id: 'students', label: 'Student Management', icon: Users, group: 'People Management' },
+  { id: 'batches', label: 'Batch Management', icon: GraduationCap, group: 'Batch & Attendance' },
+  { id: 'attendance', label: 'Attendance Management', icon: CalendarCheck, group: 'Batch & Attendance' },
+  { id: 'reports', label: 'Daily Reports Management', icon: FileText, group: 'Daily Operations' },
+  { id: 'syl-progress', label: 'Topic Progress Monitoring', icon: TrendingUp, group: 'Daily Operations' },
+  { id: 'analytics', label: 'Trainer Performance & Analytics', icon: BarChart3, group: 'Reports & Administration' },
+  { id: 'exports', label: 'Reports & Export', icon: FileCheck2, group: 'Reports & Administration' },
+  { id: 'roles', label: 'User Roles & Permissions', icon: KeyRound, group: 'Reports & Administration' },
+  { id: 'audit', label: 'Audit Logs', icon: ShieldCheck, group: 'Reports & Administration' },
+  { id: 'settings', label: 'Settings', icon: Settings, group: 'Reports & Administration' },
 ];
 
-/** Trainer Portal — exactly 9 main modules */
+export interface NavSection { id: string; label: string; icon: typeof Users; items: string[] }
+/** Admin sidebar: exactly 6 main modules (accordion); each submenu item opens an existing page */
+export const ADMIN_SECTIONS: NavSection[] = [
+  { id: 'sec-dashboard', label: 'Dashboard', icon: LayoutDashboard, items: ['dashboard'] },
+  { id: 'sec-academics', label: 'Academics', icon: BookOpen, items: ['courses', 'syllabus'] },
+  { id: 'sec-people', label: 'People Management', icon: Users, items: ['trainers', 'students'] },
+  { id: 'sec-batches', label: 'Batch & Attendance', icon: GraduationCap, items: ['batches', 'attendance'] },
+  { id: 'sec-daily', label: 'Daily Operations', icon: ClipboardCheck, items: ['reports', 'syl-progress'] },
+  { id: 'sec-admin', label: 'Reports & Administration', icon: BarChart3, items: ['analytics', 'exports', 'roles', 'audit', 'settings'] },
+];
+/** module (section) that contains a page */
+export const sectionOf = (pageId: string) => ADMIN_SECTIONS.find((s) => s.items.includes(pageId));
+
+/** Trainer Portal — 8 main modules */
 export const TRAINER_NAV: NavItem[] = [
   { id: 't-dashboard', label: 'My Dashboard', icon: LayoutDashboard, group: 'Overview' },
   { id: 't-batches', label: 'My Batches', icon: GraduationCap, group: 'Teaching' },
   { id: 't-lesson', label: "Today's Lesson", icon: BookOpen, group: 'Teaching' },
   { id: 't-notes', label: 'Lesson Notes', icon: BookText, group: 'Teaching' },
   { id: 't-attendance', label: 'Attendance', icon: CalendarCheck, group: 'Teaching' },
-  { id: 't-progress', label: 'Topic Progress', icon: ListChecks, group: 'Teaching' },
   { id: 't-report', label: 'Daily Report', icon: ClipboardCheck, group: 'Reporting' },
   { id: 't-history', label: 'My Report History', icon: History, group: 'Reporting' },
   { id: 't-profile', label: 'My Profile', icon: UserCircle, group: 'Account' },
@@ -68,4 +79,4 @@ export const ACTIVE_PARENT: Record<string, string> = {
 };
 
 /** pages that no longer exist; old links fall back to the module that replaced them */
-export const RETIRED: Record<string, string> = { notifications: 'reports', hours: 'reports', 't-notifications': 't-dashboard', 't-hours': 't-report' };
+export const RETIRED: Record<string, string> = { assignments: 'batches', interviews: 'dashboard', 't-interviews': 't-dashboard', 't-progress': 't-lesson', notifications: 'reports', hours: 'reports', 't-notifications': 't-dashboard', 't-hours': 't-report' };

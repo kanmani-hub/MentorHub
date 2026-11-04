@@ -16,11 +16,11 @@ export function NolDayView({ day, taskSlot, compact }: { day: NolDayContent & { 
     <div className={cx('grid gap-4', !compact && 'lg:grid-cols-3')}>
       {SECTIONS.map((s, si) => (
         <div key={s.key} className={cx('min-w-0 rounded-xl border border-ink-200 p-3.5 dark:border-ink-800', s.key === 'tasks' && !compact && 'lg:col-span-1')}>
-          <div className={cx('mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider', s.tone)}>{s.icon}{si + 1}. {s.title}<span className="ml-auto font-normal normal-case tracking-normal text-ink-400">{day[s.key].length}</span></div>
+          <div className={cx('mb-2 flex items-center gap-1.5 text-xs font-bold', s.tone)}>{s.icon}{si + 1}. {s.title}<span className="ml-auto font-normal normal-case tracking-normal text-ink-400">{day[s.key].length}</span></div>
           {s.key === 'tasks' ? (
             <ol className="space-y-2">{day.tasks.map((t, i) => (
               <li key={i} className="flex gap-2 text-sm text-ink-800 dark:text-ink-100">
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{i + 1}</span>
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-emerald-50 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{i + 1}</span>
                 <span className="min-w-0 flex-1">{t}{taskSlot && <div className="mt-1">{taskSlot(i)}</div>}</span>
               </li>
             ))}</ol>
@@ -49,7 +49,7 @@ export function NolDayEditor({ day, onChange, onRestore, onDelete, readOnly }: {
             const edited = o && orig !== t;
             return (
               <li key={i} className="flex items-start gap-2">
-                <span className="mt-2 w-5 shrink-0 text-right text-[11px] tabular-nums text-ink-400">{fixed ? `${i + 1}.` : '•'}</span>
+                <span className="mt-2 w-5 shrink-0 text-right text-xs tabular-nums text-ink-400">{fixed ? `${i + 1}.` : '•'}</span>
                 <div className="min-w-0 flex-1">
                   <Input aria-label={`${k} ${i + 1}`} value={t} disabled={readOnly} className={cx('h-8 text-sm', edited && 'border-amber-400', !t.trim() && 'border-red-400')} onChange={(e) => onChange({ [k]: items.map((x, j) => (j === i ? e.target.value : x)) })} />
                   {showOrig && edited && <div className="mt-0.5 text-xs text-ink-500">Original: {orig ?? <i>not in source</i>}</div>}
@@ -78,7 +78,7 @@ export function NolDayEditor({ day, onChange, onRestore, onDelete, readOnly }: {
       <div className="grid gap-4">
         {SECTIONS.map((s, si) => (
           <div key={s.key} className="min-w-0 rounded-xl border border-ink-200 p-3 dark:border-ink-800">
-            <div className={cx('mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider', s.tone)}>{s.icon}{si + 1}. {s.title}</div>
+            <div className={cx('mb-2 flex items-center gap-1.5 text-xs font-bold', s.tone)}>{s.icon}{si + 1}. {s.title}</div>
             {list(s.key)}
           </div>
         ))}

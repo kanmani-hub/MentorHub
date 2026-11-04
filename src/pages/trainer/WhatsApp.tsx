@@ -141,7 +141,7 @@ export function WhatsAppUpdatesPage() {
               <li key={st.id}>
                 <label className={cx('flex cursor-pointer items-center gap-3 py-2', locked && 'cursor-not-allowed')}>
                   <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={ticked.has(st.id)} disabled={locked} onChange={() => toggle(st.id)} aria-label={st.name} />
-                  <span className="min-w-0 flex-1"><span className="text-sm text-ink-900 dark:text-ink-50">{st.name}</span> <span className="font-mono text-[11px] text-ink-400">{st.id}</span>
+                  <span className="min-w-0 flex-1"><span className="text-sm text-ink-900 dark:text-ink-50">{st.name}</span> <span className="font-mono text-xs text-ink-400">{st.id}</span>
                     {fromUpload[st.id] && <span className="block text-xs text-emerald-700 dark:text-emerald-400">In upload as “{fromUpload[st.id]}”</span>}</span>
                   {fromUpload[st.id] && <Badge color="green" dot={false}>Matched</Badge>}
                 </label>

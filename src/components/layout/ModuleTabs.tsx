@@ -12,7 +12,7 @@ export function ModuleTabs({ value, tabs }: { value: string; tabs: { id: string;
         {tabs.map((t) => (
           <button key={t.id} onClick={() => go(t.id)} aria-current={value === t.id ? 'page' : undefined}
             className={cx('flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium', value === t.id ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white' : 'text-ink-500 hover:text-ink-800 dark:hover:text-ink-200')}>
-            {t.label}{!!t.badge && <span className="rounded-full bg-violet2-500 px-1.5 text-[10px] font-semibold text-white">{t.badge}</span>}
+            {t.label}{!!t.badge && <span className="rounded-full bg-violet2-500 px-1.5 text-xs font-semibold text-white">{t.badge}</span>}
           </button>
         ))}
       </div>

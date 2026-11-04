@@ -4,7 +4,7 @@ import { useApp } from '../../store/AppStore';
 import {
   activeTrainerBatches, attendanceFor, batchReportFor, batchProgress, courseName, dailyWork, derivedStatus, lessonPlan, studentsOf, trainerBatches, workMinutes, reportFor, classBatchesOn,
 } from '../../store/selectors';
-import { Avatar, Badge, Button, Card, Empty, Field, Input, KV, Modal, PageHeader, Progress, SimNote, Stat, Table } from '../../components/common/ui';
+import { Avatar, Badge, Button, Card, Details, Empty, Field, Input, KV, Modal, PageHeader, Progress, SimNote, Stat, Table } from '../../components/common/ui';
 import { BatchDetail } from '../shared/BatchDetail';
 import { cx, fmtDate, fmtDateTime, fmtDay, fmtMins, fmtTime12, nowHHMM, prevWeekdays, todayISO } from '../../utils';
 import { useWorkDate } from './common';
@@ -31,13 +31,16 @@ export function TrainerDashboard() {
   const greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   const nowT = nowHHMM();
   const pastOverdue = useOverdueDays();
+  const reportDays = [today, ...prevWeekdays(today, 10)].filter((d) => classBatchesOn(s, tid, d).length);
+  const awaitingSubmit = reportDays.filter((d) => ['Pending', 'Draft', 'Overdue'].includes(derivedStatus(s, tid, d))).length;
+  const nRep = (st: string) => s.reports.filter((r) => r.status === st).length;
+  const decisions = s.reports.flatMap((r) => r.events.filter((e) => ['Approved', 'Rejected', 'Correction requested'].includes(e.action)).map((e) => ({ ...e, r }))).sort((x, y) => y.at.localeCompare(x.at)).slice(0, 3);
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-sm text-ink-500">{fmtDay(today)}</div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink-900 dark:text-ink-50">{greet}, {t?.name.split(' ')[0]}</h1>
-          <p className="mt-1 text-sm text-ink-500">{todays.length} class{todays.length === 1 ? '' : 'es'} today · report due by {fmtTime12(s.settings.reportDeadline)}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-[22px]">{greet}, {t?.name.split(' ')[0]}</h1>
+          <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{fmtDay(today)} · {todays.length} class{todays.length === 1 ? '' : 'es'} today · report due by {fmtTime12(s.settings.reportDeadline)}</p>
         </div>
         <div className="flex gap-2"><Button variant="secondary" onClick={() => go('t-lesson')}>Today's lesson</Button><Button onClick={() => go('t-batch-report')}>Batch reports</Button></div>
       </div>
@@ -45,97 +48,33 @@ export function TrainerDashboard() {
       {corrections.map((r) => {
         const ev = [...r.events].reverse().find((e) => e.action === 'Correction requested');
         return (
-          <div key={r.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/40 dark:bg-amber-500/10">
-            <RotateCcw size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <div key={r.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-300/20 dark:bg-amber-400/10">
+            <RotateCcw size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-amber-900 dark:text-amber-200">Correction requested for your {fmtDate(r.date)} report</div>
-              <div className="text-sm text-amber-800 dark:text-amber-300">{ev?.reason}</div>
-              <div className="mt-0.5 text-xs text-amber-700/80 dark:text-amber-300/70">{ev?.by} · {fmtDateTime(ev?.at)}</div>
+              <div className="font-medium text-amber-900 dark:text-amber-100">Correction requested for your {fmtDate(r.date)} report</div>
+              <div className="text-sm text-amber-800 dark:text-amber-200/90">{ev?.reason}</div>
+              <div className="mt-0.5 text-xs text-amber-700/80 dark:text-amber-200/70">{ev?.by} · {fmtDateTime(ev?.at)}</div>
             </div>
             <Button variant="secondary" onClick={() => { setDate(r.date); go('t-batch-report'); }}>Fix and resubmit</Button>
           </div>
         );
       })}
       {pastOverdue.map((d) => (
-        <div key={d} className="flex flex-wrap items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-500/40 dark:bg-red-500/10">
-          <AlertTriangle size={18} className="shrink-0 text-red-600" />
-          <div className="min-w-0 flex-1 text-sm text-red-800 dark:text-red-300"><b>Overdue:</b> your report for {fmtDate(d)} was not submitted.</div>
+        <div key={d} className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-300/20 dark:bg-red-400/10">
+          <AlertTriangle size={18} className="shrink-0 text-red-600 dark:text-red-300" />
+          <div className="min-w-0 flex-1 text-sm text-red-800 dark:text-red-200"><b>Overdue:</b> your report for {fmtDate(d)} was not submitted.</div>
           <Button variant="secondary" onClick={() => { setDate(d); go('t-report'); }}>Complete it</Button>
         </div>
       ))}
 
-      {todays.length > 0 && (() => {
-        const rows = todays.map((b) => ({ b, r: batchReportFor(s, tid, b.id, today) }));
-        const done = rows.filter((x) => x.r?.status === 'Submitted').length;
-        const cons = reportFor(s, tid, today);
-        return (
-          <Card title="Today's daily report" subtitle={`${done} of ${rows.length} batch reports submitted · consolidated report: ${status}`} action={<Button size="sm" onClick={() => go(done === rows.length ? 't-report' : { page: 't-batch-report', id: rows.find((x) => x.r?.status !== 'Submitted')?.b.id })}>{done === rows.length ? (cons?.versions.length ? 'View consolidated report' : 'Send consolidated report') : 'Continue batch reports'}</Button>}>
-            <Progress value={Math.round((done / rows.length) * 100)} tone="green" />
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {rows.map(({ b, r }) => (
-                <button key={b.id} onClick={() => go({ page: 't-batch-report', id: b.id })} className="flex items-center justify-between gap-2 rounded-lg border border-ink-200 px-3 py-2 text-left hover:border-royal-500/50 dark:border-ink-800">
-                  <span className="min-w-0"><span className="block truncate text-sm font-medium text-ink-900 dark:text-ink-50">{b.name}</span><span className="text-xs text-ink-500">{b.startTime}–{b.endTime}</span></span>
-                  {r ? <Badge>{r.status}</Badge> : <Badge color="grey">Pending</Badge>}
-                </button>
-              ))}
-              <div className="flex items-center justify-between gap-2 rounded-lg bg-ink-50 px-3 py-2 dark:bg-ink-800/50"><span className="text-sm text-ink-700 dark:text-ink-200">Consolidated</span><Badge>{status}</Badge></div>
-            </div>
-          </Card>
-        );
-      })()}
-
-      {(() => {
-        const decisions = s.reports.flatMap((r) => r.events.filter((e) => ['Approved', 'Rejected', 'Correction requested'].includes(e.action)).map((e) => ({ ...e, r }))).sort((x, y) => y.at.localeCompare(x.at)).slice(0, 3);
-        if (!decisions.length) return null;
-        return (
-          <Card title="Latest report decisions" action={<Button size="sm" variant="ghost" onClick={() => go('t-history')}>Report history</Button>} pad={false}>
-            <ul className="divide-y divide-ink-100 dark:divide-ink-800">{decisions.map((e, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm"><Badge>{e.action === 'Correction requested' ? 'Correction Requested' : e.action}</Badge><span className="text-ink-800 dark:text-ink-100">Report for {fmtDate(e.r.date)}</span><span className="text-xs text-ink-500">{e.by} · {fmtDateTime(e.at)}</span>{e.reason && <span className="w-full text-xs text-ink-600 dark:text-ink-300">{e.reason}</span>}</li>
-            ))}</ul>
-          </Card>
-        );
-      })()}
-
-      <TrainerNolSummary batches={todays} date={today} />
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 2xl:grid-cols-8">
-        <Stat label="Assigned batches" value={all.length} icon={<GraduationCap size={17} />} onClick={() => go('t-batches')} />
-        <Stat label="Today's classes" value={todays.length} icon={<CalendarCheck size={17} />} tone="blue" />
-        <Stat label="Total students" value={students} icon={<Users size={17} />} tone="purple" />
-        <Stat label="Pending attendance" value={pendingAtt} icon={<ListTodo size={17} />} tone={pendingAtt ? 'orange' : 'green'} onClick={() => go('t-attendance')} />
-        <Stat label="Topics to complete" value={toComplete} icon={<BookOpen size={17} />} tone="blue" onClick={() => go('t-progress')} />
-        <Stat label="Pending from previous" value={carry} icon={<AlertTriangle size={17} />} tone={carry ? 'orange' : 'green'} onClick={() => go('t-lesson')} />
-        <Stat label="Teaching time today" value={fmtMins(wm.teaching)} sub="From classes held" icon={<Clock size={17} />} />
-        <Stat label="Daily report" value={<Badge>{status}</Badge>} icon={<FileText size={17} />} tone="purple" onClick={() => go('t-report')} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Today's classes" value={todays.length} sub={pendingAtt ? `${pendingAtt} attendance pending` : 'Attendance done'} icon={<CalendarCheck size={17} />} tone={pendingAtt ? 'orange' : 'green'} onClick={() => go('t-attendance')} />
+        <Stat label="Topics to complete" value={toComplete} sub={carry ? `${carry} carried over` : 'Nothing carried over'} icon={<BookOpen size={17} />} tone="blue" onClick={() => go('t-lesson')} />
+        <Stat label="My students" value={students} sub={`${all.length} batch${all.length === 1 ? '' : 'es'}`} icon={<Users size={17} />} onClick={() => go('t-batches')} />
+        <Stat label="Today's report" value={<Badge>{status}</Badge>} icon={<FileText size={17} />} tone="purple" onClick={() => go('t-report')} />
       </div>
 
-      {(() => {
-        // report indicators: working days in the last two weeks plus today
-        const days = [today, ...prevWeekdays(today, 10)].filter((d) => classBatchesOn(s, tid, d).length);
-        const awaiting = days.filter((d) => ['Pending', 'Draft', 'Overdue'].includes(derivedStatus(s, tid, d))).length;
-        const n = (st: string) => s.reports.filter((r) => r.status === st).length;
-        const items: [string, number, string, string][] = [
-          ['Awaiting submission', awaiting, 't-report', awaiting ? 'text-amber-700 dark:text-amber-400' : 'text-ink-900 dark:text-ink-50'],
-          ['Submitted', n('Submitted'), 't-history', 'text-royal-700 dark:text-blue-300'],
-          ['Under admin review', n('Under Review'), 't-history', 'text-violet-700 dark:text-violet-300'],
-          ['Correction requests', n('Correction Requested'), 't-history', n('Correction Requested') ? 'text-orange-700 dark:text-orange-400' : 'text-ink-900 dark:text-ink-50'],
-          ['Approved', n('Approved'), 't-history', 'text-emerald-700 dark:text-emerald-400'],
-        ];
-        return (
-          <Card title="My daily reports" pad={false}>
-            <div id="trainer-report-indicators" className="grid grid-cols-2 sm:grid-cols-5">
-              {items.map(([l, v, page, c]) => (
-                <button key={l} onClick={() => go(page)} className="border-b border-r border-ink-100 p-3 text-left hover:bg-ink-50 dark:border-ink-800 dark:hover:bg-ink-800/40 sm:border-b-0">
-                  <div className="text-xs text-ink-500">{l}</div>
-                  <div className={cx('font-display text-xl font-bold tabular-nums', c)}>{v}</div>
-                </button>
-              ))}
-            </div>
-          </Card>
-        );
-      })()}
-
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Today's timetable" className="lg:col-span-2" pad={false}>
           {plans.length === 0 ? <Empty title="No classes today" /> : (
             <ul className="divide-y divide-ink-100 dark:divide-ink-800">
@@ -173,9 +112,27 @@ export function TrainerDashboard() {
             ))}
             <li className="flex items-start gap-2 text-sm">{['Submitted', 'Under Review', 'Approved'].includes(status) ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-500" /> : <Circle size={16} className="mt-0.5 shrink-0 text-ink-300" />}<button onClick={() => go('t-report')} className="text-left text-ink-800 hover:text-royal-600 dark:text-ink-100">Send consolidated daily report</button></li>
           </ul>
-          <p className="mt-3 text-[11.5px] text-ink-500">Daily work completion is separate from syllabus progress and from report approval.</p>
         </Card>
       </div>
+
+      <Card title="My daily reports" pad={false} action={<Button size="sm" variant="ghost" onClick={() => go('t-history')}>Report history</Button>}>
+        <div id="trainer-report-indicators" className="grid grid-cols-2 border-b border-ink-100 dark:border-ink-800 sm:grid-cols-5">
+          {([['Awaiting submission', awaitingSubmit, 't-report', awaitingSubmit > 0], ['Submitted', nRep('Submitted'), 't-history', false], ['Under admin review', nRep('Under Review'), 't-history', false], ['Correction requests', nRep('Correction Requested'), 't-history', nRep('Correction Requested') > 0], ['Approved', nRep('Approved'), 't-history', false]] as const).map(([l, v, page, hot]) => (
+            <button key={l} onClick={() => go(page)} className="px-4 py-3 text-left hover:bg-ink-50/70 dark:hover:bg-ink-800/40 sm:px-5">
+              <div className="text-[13px] text-ink-500 dark:text-ink-400">{l}</div>
+              <div className={cx('text-xl font-semibold tabular-nums', hot ? 'text-amber-700 dark:text-amber-200' : 'text-ink-900 dark:text-ink-50')}>{v}</div>
+            </button>
+          ))}
+        </div>
+        {decisions.length > 0 && (
+          <div>
+            <div className="px-4 pt-3 text-[13px] font-medium text-ink-700 dark:text-ink-200 sm:px-5">Latest report decisions</div>
+            <ul className="divide-y divide-ink-100 dark:divide-ink-800">{decisions.map((e, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm sm:px-5"><Badge>{e.action === 'Correction requested' ? 'Correction Requested' : e.action}</Badge><span className="text-ink-800 dark:text-ink-100">Report for {fmtDate(e.r.date)}</span><span className="text-xs text-ink-500 dark:text-ink-400">{e.by} · {fmtDateTime(e.at)}</span>{e.reason && <span className="w-full text-xs text-ink-600 dark:text-ink-300">{e.reason}</span>}</li>
+            ))}</ul>
+          </div>
+        )}
+      </Card>
 
       <Card title="My batches · syllabus progress" pad={false}>
         <Table head={['Batch', 'Course', 'Students', 'Progress', 'Next lesson']} minW={620}>
@@ -184,6 +141,12 @@ export function TrainerDashboard() {
           ); })}
         </Table>
       </Card>
+
+      {todays.some((b) => b.nolId) && (
+        <Details summary="Notes of Lesson · today's student tasks">
+          <div className="p-4 sm:p-5 [&>section]:border-0 [&>section]:shadow-none"><TrainerNolSummary batches={todays} date={today} /></div>
+        </Details>
+      )}
     </div>
   );
 }
@@ -203,7 +166,7 @@ export function MyBatches() {
   return (
     <div>
       <PageHeader title="My Batches" sub="Only batches assigned to you are listed" />
-      {s.batches.length === 0 && <Card><Empty title="No batches assigned yet" body="Your admin assigns batches from the Trainer Assignments page." /></Card>}
+      {s.batches.length === 0 && <Card><Empty title="No batches assigned yet" body="Your admin assigns batches in Batch Management." /></Card>}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {s.batches.map((b) => {
           const p = batchProgress(s, b); const plan = lessonPlan(s, b, today);

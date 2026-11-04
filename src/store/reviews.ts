@@ -45,6 +45,7 @@ export const statusAfter = (r: DailyReport, action: ReviewAction, approvedSoFar:
  * so existing statuses stay valid. Nothing already recorded is removed.
  */
 export function normalizeReports(s: AppState): AppState {
+  s.interviews = s.interviews ?? [];
   const byName = (name: string) => s.users.find((u) => u.role === 'admin' && u.name === name);
   const defaults = s.users.filter((u) => u.role === 'admin' && u.active && u.canReview).map((u) => u.id);
   for (const r of s.reports) {

@@ -385,6 +385,7 @@ export const scopeFor = (s: AppState, user: User): AppState => {
       taskChecks: s.taskChecks.filter((t) => t.trainerId === tid && bids.has(t.batchId)),
       lessonDays: s.lessonDays.filter((x) => bids.has(x.batchId)),
       waUpdates: s.waUpdates.filter((w) => w.trainerId === tid && bids.has(w.batchId)),
+      interviews: (s.interviews ?? []).filter((i) => bids.has(i.batchId) || i.panel.some((p) => p.id === user.id)),
       reports: s.reports.filter((r) => r.trainerId === tid),
       supplemental: s.supplemental.filter((n) => n.trainerId === tid),
       notifications: s.notifications.filter((n) => n.userId === user.id),
@@ -398,7 +399,7 @@ export const scopeFor = (s: AppState, user: User): AppState => {
   return {
     ...s,
     users: s.users.filter((u) => u.id === user.id),
-    trainers: [], audit: [], reports: [], work: [], voice: [], checkins: [], assignments: [], supplemental: [], batchReports: [], files: [], taskChecks: [],
+    trainers: [], audit: [], reports: [], work: [], voice: [], checkins: [], assignments: [], supplemental: [], batchReports: [], files: [], taskChecks: [], interviews: [],
     lessonDays: s.lessonDays.filter((x) => x.batchId === b?.id),
     waUpdates: [],
     nols: s.nols.filter((n) => n.id === b?.nolId),

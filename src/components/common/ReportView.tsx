@@ -50,15 +50,15 @@ export function FakePlayer({ seconds, label }: { seconds: number; label?: string
           );
         })}
       </div>
-      <span className="shrink-0 text-[11px] tabular-nums text-ink-500">
+      <span className="shrink-0 text-xs tabular-nums text-ink-500">
         {fmtSecs(pos)} / {fmtSecs(seconds)}
       </span>
-      {label && <span className="hidden text-[10px] text-violet2-600 sm:inline">{label}</span>}
+      {label && <span className="hidden text-xs text-violet2-600 sm:inline">{label}</span>}
     </div>
   );
 }
 
-export const snapshotText = (s: ReportSnapshot, institute: string) => {
+export const snapshotText = (s: ReportSnapshot, institute: string, adminView = false) => {
   const L: string[] = [];
   L.push(`${institute} — Daily Trainer Report`, `${s.trainerName} · ${fmtDay(s.date)}`, '');
 
@@ -84,11 +84,10 @@ export const snapshotText = (s: ReportSnapshot, institute: string) => {
     L.push(`Partially Completed (${b.partial.length}): ${b.partial.map((p) => `${p.title}${p.day ? ` [${p.day}]` : ''} (${p.note || 'in progress'})`).join(', ') || 'None'}`);
     L.push(`Not Covered / Pending (${b.pending.length}): ${b.pending.map((p) => `${p.title}${p.day ? ` [${p.day}]` : ''} (${p.note || 'pending'})`).join(', ') || 'None'}`);
     
-    L.push('Practical Activities:');
-    if (b.practicalList?.length) {
-      b.practicalList.forEach((p) => L.push(`  • ${p.type}: ${p.text}`));
-    } else {
-      L.push(`  ${b.practicals || 'No practical activities conducted'}`);
+    if (!adminView && (b.practicalList?.length || b.practicals)) {
+      L.push('Practical Activities:');
+      if (b.practicalList?.length) b.practicalList.forEach((p) => L.push(`  • ${p.type}: ${p.text}`));
+      else L.push(`  ${b.practicals}`);
     }
 
     L.push('Homework / Assignments:');
@@ -98,11 +97,10 @@ export const snapshotText = (s: ReportSnapshot, institute: string) => {
       L.push(`  ${b.homework || 'No homework or assignments given'}`);
     }
 
-    L.push('Student Difficulties:');
-    if (b.doubtList?.length) {
-      b.doubtList.forEach((d) => L.push(`  • ${d.type}: ${d.text}`));
-    } else {
-      L.push(`  ${b.doubts || 'No student difficulties recorded'}`);
+    if (!adminView && (b.doubtList?.length || b.doubts)) {
+      L.push('Student Difficulties:');
+      if (b.doubtList?.length) b.doubtList.forEach((d) => L.push(`  • ${d.type}: ${d.text}`));
+      else L.push(`  ${b.doubts}`);
     }
 
     L.push(`Student Voice Notes – ${b.batchName}:`);
@@ -113,18 +111,18 @@ export const snapshotText = (s: ReportSnapshot, institute: string) => {
       L.push('  No student voice notes submitted');
     }
 
-    L.push('Project Updates:');
     if (b.projects?.length) {
+      L.push('Project Updates:');
       b.projects.forEach((p) => L.push(`  • ${p.name} [${p.status}] — Work done: ${p.workDone || '—'}; Assigned: ${p.assigned || '—'}; Students: ${p.students || '—'}; Remarks: ${p.remarks || '—'}`));
-    } else {
-      L.push('  No project updates');
     }
 
-    const np = nextClassPlan(b);
-    L.push('Next Class Plan:');
-    L.push(`  Pending topics to continue: ${np.pending.length ? np.pending.map((p) => `${p.title}${p.day ? ` (${p.day})` : ''}`).join(', ') : 'None'}`);
-    L.push(`  Planned for next class: ${np.planned ?? 'Not specified'}`);
-    L.push(`  Additional trainer remarks: ${b.batchRemarks || 'None'}`);
+    if (!adminView) {
+      const np = nextClassPlan(b);
+      L.push('Next Class Plan:');
+      L.push(`  Pending topics to continue: ${np.pending.length ? np.pending.map((p) => `${p.title}${p.day ? ` (${p.day})` : ''}`).join(', ') : 'None'}`);
+      L.push(`  Planned for next class: ${np.planned ?? 'Not specified'}`);
+      if (b.batchRemarks) L.push(`  Additional trainer remarks: ${b.batchRemarks}`);
+    }
     L.push('');
   });
 
@@ -146,9 +144,9 @@ export function nextClassPlan(b: BatchSummary) {
   return { pending, planned };
 }
 
-export function ExportModal({ open, onClose, snapshot }: { open: boolean; onClose: () => void; snapshot: ReportSnapshot }) {
+export function ExportModal({ open, onClose, snapshot, adminView }: { open: boolean; onClose: () => void; snapshot: ReportSnapshot; adminView?: boolean }) {
   const { raw, toast } = useApp();
-  const text = snapshotText(snapshot, raw.settings.instituteName);
+  const text = snapshotText(snapshot, raw.settings.instituteName, adminView);
   return (
     <Modal open={open} onClose={onClose} title="Export Daily Report" size="lg" footer={<>
       <Button variant="secondary" onClick={onClose}>Close</Button>
@@ -167,14 +165,16 @@ export function ExportModal({ open, onClose, snapshot }: { open: boolean; onClos
 
 const Section = ({ title, children, empty }: { title: string; children?: React.ReactNode; empty?: boolean }) => (
   <div className="min-w-0">
-    <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-500 dark:text-ink-400">{title}</div>
+    <div className="text-xs font-semibold text-ink-500 dark:text-ink-400">{title}</div>
     <div className="mt-1 text-sm text-ink-800 dark:text-ink-100">{empty ? <span className="italic text-ink-400 dark:text-ink-500">None recorded</span> : children}</div>
   </div>
 );
 
 /** One batch's report. Used in trainer preview and admin review. */
-export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; reportDate?: string; highlight?: boolean }) {
+export function BatchBlock({ b, reportDate, highlight, adminView }: { b: BatchSummary; reportDate?: string; highlight?: boolean; adminView?: boolean }) {
   const voiceNotes = getStudentVoiceNotes(b, reportDate);
+  const hasPracticals = !!b.practicalList?.length || !!b.practicals;
+  const hasDoubts = !!b.doubtList?.length || !!b.doubts;
 
   return (
     <div className={cx('rounded-xl border p-5 shadow-sm', highlight ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-500/5' : 'border-ink-200 bg-white dark:border-ink-800 dark:bg-ink-900/60')}>
@@ -192,7 +192,7 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
       <div className="mt-4 space-y-5">
         {/* 3.B Topic Progress */}
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Topic Progress</div>
+          <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Topic Progress</div>
           <div className="mt-2 grid gap-4 md:grid-cols-3">
             <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-3 dark:border-ink-800 dark:bg-ink-950/40">
               <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
@@ -263,26 +263,26 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
 
         {/* 3.C Attendance */}
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Attendance</div>
+          <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Attendance</div>
           <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-ink-50 p-3 sm:grid-cols-5 dark:bg-ink-800/40">
             <div>
-              <div className="text-[11px] text-ink-500">Total Students</div>
+              <div className="text-xs text-ink-500">Total Students</div>
               <div className="font-display text-lg font-bold text-ink-900 dark:text-ink-50">{b.total}</div>
             </div>
             <div>
-              <div className="text-[11px] text-emerald-600 dark:text-emerald-400">Present</div>
+              <div className="text-xs text-emerald-600 dark:text-emerald-400">Present</div>
               <div className="font-display text-lg font-bold text-emerald-700 dark:text-emerald-300">{b.present}</div>
             </div>
             <div>
-              <div className="text-[11px] text-rose-600 dark:text-rose-400">Absent</div>
+              <div className="text-xs text-rose-600 dark:text-rose-400">Absent</div>
               <div className="font-display text-lg font-bold text-rose-700 dark:text-rose-300">{b.absent}</div>
             </div>
             <div>
-              <div className="text-[11px] text-amber-600 dark:text-amber-400">Leave</div>
+              <div className="text-xs text-amber-600 dark:text-amber-400">Leave</div>
               <div className="font-display text-lg font-bold text-amber-700 dark:text-amber-300">{b.leave}</div>
             </div>
             <div>
-              <div className="text-[11px] text-royal-600 dark:text-royal-400">Late</div>
+              <div className="text-xs text-royal-600 dark:text-royal-400">Late</div>
               <div className="font-display text-lg font-bold text-royal-700 dark:text-royal-300">{b.late}</div>
             </div>
           </div>
@@ -335,29 +335,10 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
           ) : null}
         </div>
 
-        {/* 3.D Practical Activities & 3.E Homework / Assignments */}
+        {/* Homework / Assignments and Student Voice Notes */}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-            <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Practical Activities</div>
-            <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
-              {b.practicalList && b.practicalList.length > 0 ? (
-                <ul className="list-disc space-y-1 pl-4">
-                  {b.practicalList.map((p) => (
-                    <li key={p.id}>
-                      <span className="text-xs font-semibold text-ink-500">{p.type}:</span> {p.text}
-                    </li>
-                  ))}
-                </ul>
-              ) : b.practicals ? (
-                <p>{b.practicals}</p>
-              ) : (
-                <div className="text-xs italic text-ink-400">No practical activities conducted</div>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-            <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Homework / Assignments</div>
+            <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Homework / Assignments</div>
             <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
               {b.assignmentList && b.assignmentList.length > 0 ? (
                 <ul className="space-y-1.5">
@@ -378,12 +359,56 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
               )}
             </div>
           </div>
+          <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
+            <div className="text-xs font-bold text-ink-700 dark:text-ink-300">
+              Student Voice Notes – {b.batchName}
+            </div>
+            <div className="mt-2">
+              {voiceNotes.length > 0 ? (
+                <ul className="space-y-1.5 text-sm">
+                  {voiceNotes.map((vn, i) => (
+                    <li key={i} className="flex flex-wrap items-center justify-between gap-1 border-b border-ink-100/60 pb-1 last:border-0 dark:border-ink-800/60">
+                      <span className="min-w-0 text-ink-900 dark:text-ink-50">
+                        • <span className="font-medium">{vn.studentName}</span>{' '}
+                        {vn.title ? <span className="text-ink-600 dark:text-ink-300">– {vn.title}</span> : <span className="text-xs italic text-ink-400">– no description</span>}
+                      </span>
+                      <span className="text-xs text-ink-400">Submitted {fmtDate((vn.submittedAt || vn.date || reportDate || '').slice(0, 10))}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-xs italic text-ink-400">No student voice notes submitted</div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* 3.F Student Difficulties & 3.G Student Voice Notes */}
+        {/* Practical activities, difficulties and project updates are no longer collected; shown only for older reports that have them */}
+        {!adminView && (hasPracticals || hasDoubts) && (
         <div className="grid gap-4 md:grid-cols-2">
+{hasPracticals && (
           <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-            <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Student Difficulties</div>
+            <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Practical Activities</div>
+            <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
+              {b.practicalList && b.practicalList.length > 0 ? (
+                <ul className="list-disc space-y-1 pl-4">
+                  {b.practicalList.map((p) => (
+                    <li key={p.id}>
+                      <span className="text-xs font-semibold text-ink-500">{p.type}:</span> {p.text}
+                    </li>
+                  ))}
+                </ul>
+              ) : b.practicals ? (
+                <p>{b.practicals}</p>
+              ) : (
+                <div className="text-xs italic text-ink-400">No practical activities conducted</div>
+              )}
+            </div>
+          </div>
+)}
+{hasDoubts && (
+          <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
+            <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Student Difficulties</div>
             <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
               {b.doubtList && b.doubtList.length > 0 ? (
                 <ul className="list-disc space-y-1 pl-4">
@@ -400,34 +425,13 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
               )}
             </div>
           </div>
-
-          <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-            <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-              Student Voice Notes – {b.batchName}
-            </div>
-            <div className="mt-2">
-              {voiceNotes.length > 0 ? (
-                <ul className="space-y-1.5 text-sm">
-                  {voiceNotes.map((vn, i) => (
-                    <li key={i} className="flex flex-wrap items-center justify-between gap-1 border-b border-ink-100/60 pb-1 last:border-0 dark:border-ink-800/60">
-                      <span className="min-w-0 text-ink-900 dark:text-ink-50">
-                        • <span className="font-medium">{vn.studentName}</span>{' '}
-                        {vn.title ? <span className="text-ink-600 dark:text-ink-300">– {vn.title}</span> : <span className="text-xs italic text-ink-400">– no description</span>}
-                      </span>
-                      <span className="text-[11px] text-ink-400">Submitted {fmtDate((vn.submittedAt || vn.date || reportDate || '').slice(0, 10))}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-xs italic text-ink-400">No student voice notes submitted</div>
-              )}
-            </div>
-          </div>
+)}
         </div>
+        )}
 
-        {/* 3.H Project Updates */}
+        {!!b.projects?.length && (
         <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Project Updates</div>
+          <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Project Updates</div>
           <div className="mt-2">
             {b.projects && b.projects.length > 0 ? (
               <div className="space-y-2">
@@ -467,13 +471,14 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
             )}
           </div>
         </div>
+        )}
 
-        {/* 3.I Next Class Plan */}
-        {(() => {
+        {/* 3.I Next Class Plan (not shown in the admin review) */}
+        {!adminView && (() => {
           const np = nextClassPlan(b);
           return (
             <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-              <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">Next Class Plan</div>
+              <div className="text-xs font-bold text-ink-700 dark:text-ink-300">Next Class Plan</div>
               <dl className="mt-2 space-y-2 text-sm text-ink-800 dark:text-ink-100">
                 <div>
                   <dt className="text-xs font-semibold text-ink-500">Pending topics to continue</dt>
@@ -483,10 +488,12 @@ export function BatchBlock({ b, reportDate, highlight }: { b: BatchSummary; repo
                   <dt className="text-xs font-semibold text-ink-500">Topics planned for the next class</dt>
                   <dd>{np.planned ?? <span className="text-xs italic text-ink-400">Not specified</span>}</dd>
                 </div>
+                {b.batchRemarks && (
                 <div>
                   <dt className="text-xs font-semibold text-ink-500">Additional trainer remarks</dt>
-                  <dd>{b.batchRemarks || <span className="text-xs italic text-ink-400">None</span>}</dd>
+                  <dd>{b.batchRemarks}</dd>
                 </div>
+                )}
               </dl>
             </div>
           );
@@ -512,13 +519,13 @@ export function ReportView({ s, highlight }: { s: ReportSnapshot; highlight?: Se
       {/* Consolidated summary */}
       <div>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">Daily Summary</div>
+          <div className="text-xs font-bold text-ink-500 dark:text-ink-400">Daily Summary</div>
           <div className="text-sm text-ink-600 dark:text-ink-300"><span className="font-semibold text-ink-900 dark:text-ink-50">{s.trainerName}</span> · {fmtDate(s.date)}</div>
         </div>
         <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-xl border border-ink-200/80 bg-white sm:grid-cols-5 dark:border-ink-800 dark:bg-ink-900/60">
           {([['Number of Batches', totalBatches, 'text-ink-900 dark:text-ink-50'], ['Number of Classes', s.totalClasses ?? totalBatches, 'text-ink-900 dark:text-ink-50'], ['Students Attended', totalAttended, 'text-emerald-600 dark:text-emerald-400'], ['Topics Completed', totalCompleted, 'text-teal-600 dark:text-teal-400'], ['Topics Pending', totalPending, 'text-amber-600 dark:text-amber-400']] as const).map(([l, n, c]) => (
             <div key={l} className="border-b border-r border-ink-100 p-3 last:border-r-0 dark:border-ink-800 sm:border-b-0">
-              <div className="text-[11.5px] font-medium text-ink-500">{l}</div>
+              <div className="text-xs font-medium text-ink-500">{l}</div>
               <div className={cx('mt-0.5 font-display text-xl font-bold tabular-nums', c)}>{n}</div>
             </div>
           ))}
@@ -528,7 +535,7 @@ export function ReportView({ s, highlight }: { s: ReportSnapshot; highlight?: Se
       {/* 3. Batch-wise Reports */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
+          <div className="text-xs font-bold text-ink-500 dark:text-ink-400">
             Batch-wise Reports ({s.batches.length})
           </div>
           {s.batches.length > 1 && (
@@ -566,7 +573,7 @@ export function ReportView({ s, highlight }: { s: ReportSnapshot; highlight?: Se
       {/* Trainer Remarks (if any) */}
       {(s.remarks || s.exception) && (
         <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm dark:border-ink-800 dark:bg-ink-900/60">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">General Trainer Remarks</div>
+          <div className="text-xs font-bold text-ink-500 dark:text-ink-400">General Trainer Remarks</div>
           {s.remarks && <p className="mt-1 text-sm text-ink-800 dark:text-ink-100">{s.remarks}</p>}
           {s.exception && (
             <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">

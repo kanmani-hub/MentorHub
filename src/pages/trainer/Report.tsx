@@ -10,7 +10,7 @@ import { ExportModal, ReportView } from '../../components/common/ReportView';
 import { cx, fmtDate, fmtDateTime, fmtTime12, todayISO } from '../../utils';
 import { WorkDatePicker, useWorkDate } from './common';
 
-const PAGE_FOR: Record<string, string> = { attendance: 't-attendance', progress: 't-progress', activities: 't-activities', voice: 't-voice', 'batch-report': 't-batch-report', lesson: 't-lesson' };
+const PAGE_FOR: Record<string, string> = { attendance: 't-attendance', progress: 't-batch-report', activities: 't-activities', voice: 't-voice', 'batch-report': 't-batch-report', lesson: 't-lesson' };
 const userName = (s: AppState, id: string) => s.users.find((u) => u.id === id)?.name ?? 'Former admin';
 const reviewerNames = (s: AppState, ids: string[]) => ids.map((id) => userName(s, id)).join(', ');
 
@@ -136,7 +136,7 @@ export function DailyReportPage() {
                         <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1.5 hover:bg-ink-50 dark:hover:bg-ink-800/60">
                           <input type="checkbox" className="h-4 w-4 shrink-0 accent-royal-600" checked={reviewers.includes(a.id)} onChange={() => toggleReviewer(a.id)} aria-label={`Reviewer ${a.name}`} />
                           <Avatar name={a.name} size={28} />
-                          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink-900 dark:text-ink-50">{a.name}</span><span className="block truncate text-[11.5px] text-ink-500">{a.email}</span></span>
+                          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink-900 dark:text-ink-50">{a.name}</span><span className="block truncate text-xs text-ink-500">{a.email}</span></span>
                         </label>
                       </li>
                     ))}
@@ -220,13 +220,13 @@ export function ReportHistory({ openId }: { openId?: string }) {
           footer={<>{r.status === 'Correction Requested' && <Button onClick={() => { setOpen(null); correct(r.date); }}>Correct & resubmit</Button>}<Button variant="secondary" icon={<Download size={14} />} onClick={() => setExp(true)}>Export</Button><Button variant="secondary" onClick={() => setOpen(null)}>Close</Button></>}>
           {r.versions.length > 1 && <div className="mb-3"><Select id="rh-ver" value={v.version} onChange={(e) => setVer(Number(e.target.value))} className="!w-auto">{r.versions.map((x) => <option key={x.version} value={x.version}>Version {x.version}</option>)}</Select></div>}
           <div className="mb-3 rounded-lg border border-ink-200 p-3 dark:border-ink-700">
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-500">Reviewers for version {v.version}</div>
+            <div className="mb-1.5 text-xs font-semibold text-ink-500">Reviewers for version {v.version}</div>
             <ul className="space-y-1 text-sm">{(v.reviewerIds ?? []).map((id) => { const rec = reviewsFor(r, v.version).find((h) => h.reviewerId === id); return (
               <li key={id}><span className="font-medium text-ink-900 dark:text-ink-50">{rec?.reviewerName ?? userName(s, id)}</span> <Badge color={!rec ? 'grey' : rec.action === 'Approved' ? 'green' : rec.action === 'Rejected' ? 'red' : 'orange'} dot={false}>{rec ? rec.action : 'Pending'}</Badge>{rec && <span className="text-xs text-ink-500"> {fmtDateTime(rec.reviewedAt)}{rec.remarks && ` · ${rec.remarks}`}</span>}</li>
             ); })}</ul>
           </div>
           <ReportView s={v.snapshot} />
-          <div className="mt-5 border-t border-ink-100 pt-3 dark:border-ink-800"><div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-400">History</div><ul className="space-y-1.5 text-sm">{[...r.events].reverse().filter((e) => !/Draft saved/.test(e.action)).map((e, i) => <li key={i}><span className="text-ink-800 dark:text-ink-100">{e.action}</span> <span className="text-xs text-ink-500">· {e.by} · {fmtDateTime(e.at)}</span>{e.reason && <div className="text-xs text-ink-600 dark:text-ink-300">{e.reason}</div>}</li>)}</ul></div>
+          <div className="mt-5 border-t border-ink-100 pt-3 dark:border-ink-800"><div className="mb-2 text-xs font-semibold text-ink-400">History</div><ul className="space-y-1.5 text-sm">{[...r.events].reverse().filter((e) => !/Draft saved/.test(e.action)).map((e, i) => <li key={i}><span className="text-ink-800 dark:text-ink-100">{e.action}</span> <span className="text-xs text-ink-500">· {e.by} · {fmtDateTime(e.at)}</span>{e.reason && <div className="text-xs text-ink-600 dark:text-ink-300">{e.reason}</div>}</li>)}</ul></div>
           {exp && <ExportModal open onClose={() => setExp(false)} snapshot={v.snapshot} />}
         </Modal>
       )}

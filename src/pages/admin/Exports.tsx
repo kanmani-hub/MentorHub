@@ -124,7 +124,7 @@ export default function Exports() {
               {rows.slice(0, 50).map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j} className="max-w-[260px] truncate text-xs" title={String(c)}>{String(c) || '—'}</td>)}</tr>)}
             </Table>
           </Card>
-          <details className="rounded-xl border border-ink-200 bg-white p-3 text-sm dark:border-ink-800 dark:bg-ink-900"><summary className="cursor-pointer text-ink-700 dark:text-ink-200">Raw CSV</summary><textarea id="csv-out" readOnly value={csv} className="mt-2 h-48 w-full rounded-lg border border-ink-200 bg-ink-50 p-2 font-mono text-[11px] text-ink-800 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200" /></details>
+          <details className="rounded-xl border border-ink-200 bg-white p-3 text-sm dark:border-ink-800 dark:bg-ink-900"><summary className="cursor-pointer text-ink-700 dark:text-ink-200">Raw CSV</summary><textarea id="csv-out" readOnly value={csv} className="mt-2 h-48 w-full rounded-lg border border-ink-200 bg-ink-50 p-2 font-mono text-xs text-ink-800 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-200" /></details>
         </div>
       </div>
     </div>

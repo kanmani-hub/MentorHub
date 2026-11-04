@@ -119,7 +119,7 @@ export default function Batches() {
                   { label: 'View batch', onClick: () => go({ page: 'batch', id: b.id }) },
                   { label: 'Edit batch', onClick: () => setForm({ open: true, b }) },
                   { label: 'Add students', onClick: () => setAdd(b.id) },
-                  { label: 'Assign trainer', onClick: () => go({ page: 'assignments', tab: b.id }) },
+                  { label: 'Assign trainer', onClick: () => setForm({ open: true, b }) },
                   ...(['Active', 'On Hold', 'Completed'] as const).filter((x) => x !== b.status).map((x) => ({ label: `Mark ${x}`, onClick: () => { mutate((d) => { d.batches.find((y) => y.id === b.id)!.status = x; }, { action: 'Batch status changed', entity: b.name, prev: b.status, next: x, reason: '' }); toast(`${b.name} marked ${x}`); } })),
                 ]} /></td>
               </tr>

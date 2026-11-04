@@ -3,17 +3,18 @@ import {
 } from 'recharts';
 import { useApp } from '../../store/AppStore';
 
-export const SERIES = { navy: '#1e3a8a', royal: '#3b6cf6', purple: '#7c5cf0', green: '#16a34a', orange: '#f59e0b', red: '#dc2626', grey: '#94a3b8', teal: '#0d9488' };
+/** muted chart colours that hold up on both white and deep-slate backgrounds */
+export const SERIES = { navy: '#5f7cc4', royal: '#7f98d0', purple: '#8578c4', green: '#5aa67c', orange: '#d0a253', red: '#c9786f', grey: '#98a2b3', teal: '#5ea39a' };
 
 const useAxis = () => {
   const { dark } = useApp();
   return {
-    tick: { fill: dark ? '#a3abbd' : '#667085', fontSize: 11 },
-    grid: dark ? '#262d3d' : '#eceef3',
+    tick: { fill: dark ? '#9aa3b2' : '#626d7f', fontSize: 12 },
+    grid: dark ? '#2b323e' : '#eef0f3',
     tooltip: {
-      contentStyle: { background: dark ? '#1f2533' : '#fff', border: `1px solid ${dark ? '#343c4e' : '#dde1ea'}`, borderRadius: 8, fontSize: 12, color: dark ? '#eceef3' : '#141924' },
-      labelStyle: { fontWeight: 600, color: dark ? '#eceef3' : '#141924' },
-      cursor: { fill: dark ? 'rgba(255,255,255,0.04)' : 'rgba(30,58,138,0.05)' },
+      contentStyle: { background: dark ? '#2b323e' : '#fff', border: `1px solid ${dark ? '#3a4352' : '#e1e5ea'}`, borderRadius: 8, fontSize: 12.5, color: dark ? '#e4e7ec' : '#1d222b' },
+      labelStyle: { fontWeight: 600, color: dark ? '#e4e7ec' : '#1d222b' },
+      cursor: { fill: dark ? 'rgba(255,255,255,0.04)' : 'rgba(74,103,177,0.05)' },
     },
     dark,
   };
@@ -40,7 +41,7 @@ export function Bars({ data, x, series, height = 240, unit = '', layout = 'horiz
             </>
           )}
           <Tooltip {...a.tooltip} formatter={(v: number) => `${v}${unit}`} />
-          {series.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: a.tick.fill }} iconType="circle" iconSize={8} />}
+          {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12, color: a.tick.fill }} iconType="circle" iconSize={8} />}
           {series.map((s, i) => (
             <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} stackId={s.stack} radius={s.stack && i < series.length - 1 ? 0 : vertical ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={vertical ? 16 : 28} />
           ))}
@@ -86,7 +87,7 @@ export function Donut({ data, height = 200, center }: { data: { name: string; va
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
             <div>
               <div className="font-display text-xl font-extrabold tabular-nums text-ink-900 dark:text-ink-50">{center.value}</div>
-              <div className="text-[11px] text-ink-500">{center.label}</div>
+              <div className="text-xs text-ink-500">{center.label}</div>
             </div>
           </div>
         )}
