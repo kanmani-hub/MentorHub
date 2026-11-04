@@ -222,17 +222,15 @@ export const buildSnapshot = (s: AppState, trainerId: string, date: string): Rep
     const checks = taskChecksFor(s, b.id, date);
     const studentTasks = nd ? nd.day.tasks.map((text, i) => ({ text, status: (checks.find((c) => c.taskIndex === i && c.dayNumber === nd.day.dayNumber)?.status ?? 'Not marked') as 'Completed' | 'Not Completed' | 'Not marked' })) : undefined;
     const wa = s.waUpdates.find((w) => w.batchId === b.id && w.date === date);
-    const defaultVoiceTitles = ['Doubt clarification', 'Topic explanation request', 'Practical exercise feedback', 'Assignment clarification'];
-    const studentVoiceNotes: StudentVoiceNoteItem[] = (wa?.studentIds ?? []).map((id, idx) => {
+    // only what the trainer saved: no titles are made up when a note has no description
+    const studentVoiceNotes: StudentVoiceNoteItem[] = (wa?.studentIds ?? []).map((id) => {
       const vnItem = wa?.voiceNotes?.find((v) => v.studentId === id);
-      return {
-        studentId: id,
-        studentName: nameOf(id),
-        title: vnItem?.title || defaultVoiceTitles[idx % defaultVoiceTitles.length],
-        date,
-        submittedAt: vnItem?.submittedAt || wa?.savedAt || date,
-      };
+      return { studentId: id, studentName: nameOf(id), title: vnItem?.title?.trim() ?? '', date, submittedAt: vnItem?.submittedAt || wa?.savedAt || date };
     });
+    const allDays = flatDays(syllabusOf(s, b));
+    const nextIdx = plan.selected && plan.flat ? allDays.findIndex((f) => f.day.id === plan.flat!.day.id) + 1 : -1;
+    const nextDay = nextIdx > 0 ? allDays[nextIdx] : undefined;
+    const nextTopics = nextDay ? { day: `Day ${nextIdx + 1} – ${nextDay.day.title}`, titles: nextDay.day.topics.map((t) => t.title) } : undefined;
     return {
       batchId: b.id,
       batchName: b.name,
@@ -252,6 +250,7 @@ export const buildSnapshot = (s: AppState, trainerId: string, date: string): Rep
       batchReportStatus: br?.status ?? 'Not started',
       whatsappStudents: (wa?.studentIds ?? []).map(nameOf),
       studentVoiceNotes,
+      nextTopics,
       studentTasks,
       practicalList: br?.practicals ?? [],
       assignmentList: br?.assignments ?? [],
@@ -292,8 +291,13 @@ export const validateReport = (s: AppState, trainerId: string, date: string): Is
     if (!br) issues.push({ section: 'Batch Report', page: 'batch-report', batchId: b.id, message: `Batch report not started for ${b.name}` });
     else if (br.status !== 'Submitted') issues.push({ section: 'Batch Report', page: 'batch-report', batchId: b.id, message: `Batch report for ${b.name} is still a draft` });
     else if (attendanceFor(s, b.id, date)?.status !== 'Submitted') issues.push({ section: 'Attendance', page: 'attendance', batchId: b.id, message: `Attendance not submitted for ${b.name}` });
-    if (s.settings.requireVoiceNote && br && !br.voiceNames.length)
-      issues.push({ section: 'Batch Report', page: 'batch-report', batchId: b.id, message: `Add at least one WhatsApp voice note name for ${b.name}` });
+    if (br?.status === 'Submitted') {
+      const plan = lessonPlan(s, b, date);
+      const missing = plan.topics.filter((t) => !s.progress.some((p) => p.batchId === b.id && p.topicKey === t.key && p.date === date));
+      if (plan.selected && missing.length) issues.push({ section: 'Topic Progress', page: 'progress', batchId: b.id, message: `Save topic progress for ${missing.length} topic(s) in ${b.name}` });
+    }
+    if (s.settings.requireVoiceNote && !(s.waUpdates.find((w) => w.batchId === b.id && w.date === date)?.studentIds.length))
+      issues.push({ section: 'Student Voice Notes', page: 'voice', batchId: b.id, message: `Add at least one student voice note for ${b.name}` });
   }
   return issues;
 };
@@ -361,7 +365,8 @@ export const scopeFor = (s: AppState, user: User): AppState => {
     const cids = new Set(batches.map((b) => b.courseId));
     return {
       ...s,
-      users: s.users.filter((u) => u.id === user.id),
+      // own account, plus active admins (name and email only) so the trainer can pick report reviewers
+      users: s.users.filter((u) => u.id === user.id || (u.role === 'admin' && u.active)).map((u) => (u.id === user.id ? u : { ...u, password: '', canReview: undefined })),
       trainers: s.trainers.filter((t) => t.id === tid),
       courses: s.courses.filter((c) => cids.has(c.id)),
       syllabi: s.syllabi.filter((v) => batches.some((b) => b.syllabusVersionId === v.id)),
@@ -407,4 +412,16 @@ export const scopeFor = (s: AppState, user: User): AppState => {
     doubts: s.doubts.filter((d) => d.studentId === st?.id),
     notifications: s.notifications.filter((n) => n.userId === user.id),
   };
+};
+
+export type BatchReportStatusLabel = 'Not Started' | 'Draft' | 'Submitted' | 'Under Review' | 'Correction Requested' | 'Approved' | 'Rejected';
+/** a batch report's status: its own Draft/Submitted state, then the review state of the consolidated report that includes it */
+export const batchReportStatus = (s: AppState, trainerId: string, batchId: string, date: string): BatchReportStatusLabel => {
+  const br = batchReportFor(s, trainerId, batchId, date);
+  if (!br) return 'Not Started';
+  if (br.status === 'Draft') return 'Draft';
+  const r = reportFor(s, trainerId, date);
+  const included = r?.versions.at(-1)?.snapshot.batches.some((b) => b.batchId === batchId);
+  if (r && included && r.status !== 'Draft' && r.status !== 'Submitted') return r.status;
+  return 'Submitted';
 };

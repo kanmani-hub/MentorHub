@@ -36,7 +36,7 @@ export default function Settings() {
           <Field label="Lesson day complete when"><Select id="rp-rule" value={f.dayCompleteRule} onChange={(e) => set('dayCompleteRule', e.target.value as S['dayCompleteRule'])}><option value="all-completed">Every topic is marked Completed</option><option value="reviewed">Every topic has a status and a reason</option></Select></Field>
           <div className="sm:col-span-2 divide-y divide-ink-100 dark:divide-ink-800">
             <Toggle id="rp-exc" checked={f.allowException} onChange={(v) => set('allowException', v)} label="Allow trainers to record an exception reason to submit with missing items" />
-            <Toggle id="rp-voice" checked={f.requireVoiceNote} onChange={(v) => set('requireVoiceNote', v)} label="Require at least one WhatsApp voice note name in each batch report" />
+            <Toggle id="rp-voice" checked={f.requireVoiceNote} onChange={(v) => set('requireVoiceNote', v)} label="Require at least one student voice note in each batch report" />
           </div>
         </div>}
         {tab === 'attendance' && <div className="grid gap-4 sm:grid-cols-2">

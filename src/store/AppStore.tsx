@@ -3,6 +3,7 @@ import type { AppState, AuditLog, Notification, Route, User } from '../types';
 import { createSeed } from '../data/seed';
 import { nowTs, uid } from '../utils';
 import { scopeFor } from './selectors';
+import { normalizeReports } from './reviews';
 
 const KEY = 'trainerhub.state.v7';
 const SESSION_KEY = 'trainerhub.session.v7';
@@ -10,7 +11,7 @@ const SESSION_KEY = 'trainerhub.session.v7';
 const load = (): AppState => {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as AppState;
+    if (raw) return normalizeReports(JSON.parse(raw) as AppState);
   } catch { /* storage unavailable */ }
   return createSeed();
 };

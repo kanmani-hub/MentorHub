@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckSquare, ClipboardPaste, FileSpreadsheet, MessageCircle, Save, Upload } from 'lucide-react';
+import { CheckSquare, ClipboardPaste, FileSpreadsheet, Mic, Save, Upload } from 'lucide-react';
 import { useApp } from '../../store/AppStore';
 import { useWhatsAppUpdates } from '../../store/actions';
 import { activeTrainerBatches, isDayLocked, studentsOf } from '../../store/selectors';
@@ -23,6 +23,7 @@ export function WhatsAppUpdatesPage() {
   const [fromUpload, setFromUpload] = useState<Record<string, string>>({}); // studentId -> name as written in the upload
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [ticked, setTicked] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState<Record<string, { title: string; submittedAt: string }>>({}); // studentId -> what the voice note was about
   const [source, setSource] = useState<Source>('manual');
   const [fileName, setFileName] = useState<string>();
   const [found, setFound] = useState<number | null>(null);
@@ -37,6 +38,7 @@ export function WhatsAppUpdatesPage() {
   // reopen: load the saved selection for this batch + date
   useEffect(() => {
     setTicked(new Set(saved?.studentIds ?? []));
+    setNotes(Object.fromEntries((saved?.voiceNotes ?? []).map((v) => [v.studentId, { title: v.title ?? '', submittedAt: (v.submittedAt ?? date).slice(0, 10) }])));
     setUnmatched(saved?.unmatched ?? []);
     setFromUpload({}); setFound(null); setSource(saved?.source ?? 'manual'); setFileName(saved?.fileName);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,28 +69,32 @@ export function WhatsAppUpdatesPage() {
     setFromUpload((m) => ({ ...m, [studentId]: name }));
     setUnmatched((u) => u.filter((x) => x !== name));
   };
-  const onSave = () => { if (b) save(b.id, date, [...ticked], unmatched, source, fileName); };
+  const noteOf = (id: string) => notes[id] ?? { title: '', submittedAt: date };
+  const setNote = (id: string, patch: Partial<{ title: string; submittedAt: string }>) => setNotes((n) => ({ ...n, [id]: { ...noteOf(id), ...patch } }));
+  const onSave = () => { if (b) save(b.id, date, [...ticked], unmatched, source, fileName, Object.fromEntries([...ticked].map((id) => [id, noteOf(id)]))); };
 
   const ordered = [...studs].sort((x, y) => Number(!!fromUpload[y.id]) - Number(!!fromUpload[x.id]) || x.name.localeCompare(y.name));
-  const dirty = !saved ? ticked.size > 0 : [...ticked].sort().join() !== [...saved.studentIds].sort().join();
+  const savedNote = (id: string) => saved?.voiceNotes?.find((v) => v.studentId === id);
+  const notesChanged = [...ticked].some((id) => { const n = noteOf(id), o = savedNote(id); return n.title.trim() !== (o?.title ?? '') || n.submittedAt !== (o?.submittedAt ?? date).slice(0, 10); });
+  const dirty = !saved ? ticked.size > 0 : [...ticked].sort().join() !== [...saved.studentIds].sort().join() || notesChanged;
   const myUpdates = s.waUpdates.filter((w) => (fBatch === 'All' || w.batchId === fBatch) && (!fDate || w.date === fDate)).sort((x, y) => y.date.localeCompare(x.date) || x.batchId.localeCompare(y.batchId));
   const nameOf = (id: string) => s.students.find((x) => x.id === id)?.name ?? id;
 
-  if (!b) return <div><PageHeader title="WhatsApp Student Updates" /><Card><Empty title="No active batches assigned" /></Card></div>;
+  if (!b) return <div><PageHeader title="Student Voice Notes" /><Card><Empty title="No active batches assigned" /></Card></div>;
   return (
     <div>
-      <PageHeader title="WhatsApp Student Updates" sub="Record which students sent WhatsApp updates or voice notes. The names go into your daily report." />
+      <PageHeader title="Student Voice Notes" sub="Record which students sent you a voice note and what it was about. The list goes into your daily report under the batch and class date." />
       <Card>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_200px_auto]">
           <Field label="Batch"><Select id="wa-batch" value={b.id} onChange={(e) => setBid(e.target.value)}>{batches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select></Field>
           <Field label="Class date"><Input id="wa-date" type="date" value={date} max={todayISO()} min={b.startDate} onChange={(e) => e.target.value && e.target.value <= todayISO() && setDate(e.target.value)} /></Field>
-          <div className="flex items-end">{saved ? <Badge color="green">Saved · {saved.studentIds.length} students</Badge> : <Badge color="grey">Nothing saved for this date</Badge>}</div>
+          <div className="flex items-end">{saved ? <Badge color="green">Saved · {saved.studentIds.length} voice note{saved.studentIds.length === 1 ? '' : 's'}</Badge> : <Badge color="grey">Nothing saved for this date</Badge>}</div>
         </div>
       </Card>
       {locked && <div className="mt-3 rounded-lg bg-ink-100 px-3 py-2 text-sm text-ink-600 dark:bg-ink-800 dark:text-ink-300">The daily report for {fmtDate(date)} has been submitted, so this selection can no longer be edited.</div>}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-        <Card title="1. Add names" subtitle="Paste from WhatsApp or upload a list. Names are matched to this batch only; no students are created.">
+        <Card title="1. Add names" subtitle="Paste names (chat lines work too) or upload a list. Names are matched to this batch only; no students are created.">
           <div className="mb-3 inline-flex rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">
             {([['paste', 'Paste names', ClipboardPaste], ['file', 'Upload file', Upload]] as const).map(([k, l, I]) => (
               <button key={k} onClick={() => setMode(k)} className={cx('flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium', mode === k ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white' : 'text-ink-500')}><I size={14} />{l}</button>
@@ -96,7 +102,7 @@ export function WhatsAppUpdatesPage() {
           </div>
           {mode === 'paste' ? (
             <>
-              <Textarea id="wa-paste" rows={7} value={paste} disabled={locked} onChange={(e) => setPaste(e.target.value)} placeholder={'One name per line, or paste WhatsApp chat lines, e.g.\nDiya Patel\n[04/11/26, 9:15 am] Ishaan Reddy: voice note\n+91 98123 88771'} />
+              <Textarea id="wa-paste" rows={7} value={paste} disabled={locked} onChange={(e) => setPaste(e.target.value)} placeholder={'One name per line, or paste chat lines, e.g.\nDiya Patel\n[04/11/26, 9:15 am] Ishaan Reddy: voice note\n+91 98123 88771'} />
               <div className="mt-2 flex justify-end"><Button disabled={locked || !paste.trim()} onClick={() => ingest(namesFromText(paste), 'paste')}>Read names</Button></div>
             </>
           ) : (
@@ -125,7 +131,7 @@ export function WhatsAppUpdatesPage() {
           )}
         </Card>
 
-        <Card title="2. Tick students who sent updates" subtitle={`${ticked.size} of ${studs.length} selected`}
+        <Card title="2. Tick students and describe each voice note" subtitle={`${ticked.size} of ${studs.length} selected`}
           action={<>
             {Object.keys(fromUpload).length > 0 && <Button size="sm" variant="secondary" icon={<CheckSquare size={14} />} disabled={locked} onClick={() => setTicked((t) => new Set([...t, ...Object.keys(fromUpload)]))}>Tick all from upload</Button>}
             <Button size="sm" variant="ghost" disabled={locked || !ticked.size} onClick={() => setTicked(new Set())}>Clear</Button>
@@ -139,6 +145,12 @@ export function WhatsAppUpdatesPage() {
                     {fromUpload[st.id] && <span className="block text-xs text-emerald-700 dark:text-emerald-400">In upload as “{fromUpload[st.id]}”</span>}</span>
                   {fromUpload[st.id] && <Badge color="green" dot={false}>Matched</Badge>}
                 </label>
+                {ticked.has(st.id) && (
+                  <div className="mb-2 ml-7 grid gap-2 sm:grid-cols-[1fr_150px]">
+                    <Input aria-label={`Voice note title for ${st.name}`} value={noteOf(st.id).title} disabled={locked} maxLength={120} onChange={(e) => setNote(st.id, { title: e.target.value })} placeholder="Title or description, e.g. Doubt on loops" className="h-8 text-sm" />
+                    <Input aria-label={`Submission date for ${st.name}`} type="date" value={noteOf(st.id).submittedAt} max={todayISO()} disabled={locked} onChange={(e) => e.target.value && setNote(st.id, { submittedAt: e.target.value })} className="h-8 text-sm" />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -149,20 +161,20 @@ export function WhatsAppUpdatesPage() {
         </Card>
       </div>
 
-      <Card className="mt-4" pad={false} title="Saved updates" subtitle="Included in the daily report as “Students Who Sent WhatsApp Updates”"
+      <Card className="mt-4" pad={false} title="Saved voice notes" subtitle="Shown in the daily report as “Student Voice Notes”"
         action={<>
           <Select id="wa-fbatch" value={fBatch} onChange={(e) => setFBatch(e.target.value)} className="!w-auto"><option value="All">All my batches</option>{s.batches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>
           <Input id="wa-fdate" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} className="!w-auto" />
           {fDate && <Button size="sm" variant="ghost" onClick={() => setFDate('')}>All dates</Button>}
         </>}>
-        <Table head={['Class date', 'Batch', 'Students who sent updates', 'Saved', '']} minW={720} empty={!myUpdates.length && <Empty icon={<MessageCircle size={20} />} title="No saved updates for this filter" />}>
+        <Table head={['Class date', 'Batch', 'Student voice notes', 'Saved', '']} minW={720} empty={!myUpdates.length && <Empty icon={<Mic size={20} />} title="No saved voice notes for this filter" />}>
           {myUpdates.map((w) => {
             const lockedW = isDayLocked(s, tid, w.date);
             return (
               <tr key={w.id} className={w.batchId === b.id && w.date === date ? 'bg-royal-50/50 dark:bg-royal-500/5' : ''}>
                 <td className="whitespace-nowrap">{fmtDate(w.date)}</td>
                 <td className="whitespace-nowrap">{s.batches.find((x) => x.id === w.batchId)?.name}</td>
-                <td><ul className="list-disc space-y-0.5 pl-4 text-sm">{w.studentIds.map((id) => <li key={id}>{nameOf(id)}</li>)}</ul>{!w.studentIds.length && <span className="text-xs text-ink-400">None selected</span>}</td>
+                <td><ul className="list-disc space-y-0.5 pl-4 text-sm">{w.studentIds.map((id) => { const vn = w.voiceNotes?.find((x) => x.studentId === id); return <li key={id}>{nameOf(id)}{vn?.title && <span className="text-ink-500"> – {vn.title}</span>}</li>; })}</ul>{!w.studentIds.length && <span className="text-xs text-ink-400">None selected</span>}</td>
                 <td className="whitespace-nowrap text-xs">{fmtDateTime(w.savedAt)}<br />{w.savedBy}</td>
                 <td className="text-right">{lockedW ? <Badge color="grey" dot={false}>Report submitted</Badge> : <Button size="sm" variant="secondary" onClick={() => { setBid(w.batchId); setDate(w.date); window.scrollTo({ top: 0 }); document.getElementById('main-scroll')?.scrollTo({ top: 0 }); }}>Edit</Button>}</td>
               </tr>
@@ -181,17 +193,17 @@ export function AdminWhatsAppUpdates() {
   const list = s.waUpdates.filter((w) => (fBatch === 'All' || w.batchId === fBatch) && (!fDate || w.date === fDate)).sort((x, y) => y.date.localeCompare(x.date));
   return (
     <div>
-      <PageHeader title="WhatsApp Student Updates" sub="Students each trainer marked as having sent WhatsApp updates or voice notes" />
+      <PageHeader title="Student Voice Notes" sub="Voice notes each trainer recorded per batch and class date" />
       <Card pad={false} action={<>
         <Select id="awa-batch" value={fBatch} onChange={(e) => setFBatch(e.target.value)} className="!w-auto"><option value="All">All batches</option>{s.batches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>
         <Input id="awa-date" type="date" value={fDate} onChange={(e) => setFDate(e.target.value)} className="!w-auto" />
         {fDate && <Button size="sm" variant="ghost" onClick={() => setFDate('')}>All dates</Button>}
       </>} title={`${list.length} record${list.length === 1 ? '' : 's'}`}>
-        <Table head={['Class date', 'Batch', 'Trainer', 'Students who sent updates', 'Count', 'Unmatched names', 'Saved']} minW={900} empty={!list.length && <Empty icon={<MessageCircle size={20} />} title="No WhatsApp updates for this filter" />}>
+        <Table head={['Class date', 'Batch', 'Trainer', 'Student voice notes', 'Count', 'Unmatched names', 'Saved']} minW={900} empty={!list.length && <Empty icon={<Mic size={20} />} title="No student voice notes for this filter" />}>
           {list.map((w) => (
             <tr key={w.id}>
               <td className="whitespace-nowrap">{fmtDate(w.date)}</td><td className="whitespace-nowrap">{s.batches.find((x) => x.id === w.batchId)?.name}</td><td className="whitespace-nowrap">{s.trainers.find((t) => t.id === w.trainerId)?.name}</td>
-              <td><ul className="list-disc space-y-0.5 pl-4">{w.studentIds.map((id) => <li key={id}>{s.students.find((x) => x.id === id)?.name}</li>)}</ul></td>
+              <td><ul className="list-disc space-y-0.5 pl-4">{w.studentIds.map((id) => { const vn = w.voiceNotes?.find((x) => x.studentId === id); return <li key={id}>{s.students.find((x) => x.id === id)?.name}{vn?.title && <span className="text-ink-500"> – {vn.title}</span>}</li>; })}</ul></td>
               <td className="tabular-nums">{w.studentIds.length}/{studentsOf(s, w.batchId).length}</td>
               <td className="text-xs text-ink-500">{w.unmatched.join(', ') || '—'}</td>
               <td className="whitespace-nowrap text-xs">{fmtDateTime(w.savedAt)}</td>

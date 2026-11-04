@@ -6,7 +6,8 @@ import {
 } from '../../store/selectors';
 import { Avatar, Badge, Button, Card, Progress, Stat, Table } from '../../components/common/ui';
 import { Bars, SERIES } from '../../components/charts/Charts';
-import { fmtDateTime, fmtMins, fmtShort, prevWeekdays, todayISO, pct } from '../../utils';
+import { cx, fmtDateTime, fmtMins, fmtShort, prevWeekdays, todayISO, pct } from '../../utils';
+import { assignedTo, myReview } from '../../store/reviews';
 
 export default function AdminDashboard() {
   const { state: s, go, user } = useApp();
@@ -17,7 +18,11 @@ export default function AdminDashboard() {
   const statuses = teaching.map((t) => derivedStatus(s, t.id, today));
   const submittedToday = statuses.filter((x) => ['Submitted', 'Under Review', 'Approved', 'Correction Requested', 'Rejected'].includes(x)).length;
   const pendingToday = statuses.filter((x) => ['Pending', 'Draft', 'Overdue'].includes(x)).length;
-  const awaiting = s.reports.filter((r) => r.status === 'Submitted' || r.status === 'Under Review').length;
+  // reviewer-specific counters: only reports this admin was selected to review
+  const mine = assignedTo(s, user!.id);
+  const awaiting = mine.filter((r) => myReview(r, user!.id).awaiting).length;
+  const approvedByMe = mine.filter((r) => (r.reviewHistory ?? []).some((h) => h.reviewerId === user!.id && h.action === 'Approved')).length;
+  const needCorrection = mine.filter((r) => r.status === 'Correction Requested').length;
   const last7 = [...prevWeekdays(today, 6).reverse(), today];
 
   const courseData = s.courses.filter((c) => c.status === 'Published').map((c) => {
@@ -63,10 +68,10 @@ export default function AdminDashboard() {
           <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink-900 dark:text-ink-50">Admin Dashboard</h1>
           <p className="mt-1 text-sm text-ink-500">Every number below is computed from attendance, topic and report records.</p>
         </div>
-        <div className="flex gap-2"><Button variant="secondary" onClick={() => go('analytics')}>Open analytics</Button><Button onClick={() => go('approvals')}>Review reports ({awaiting})</Button></div>
+        <div className="flex gap-2"><Button variant="secondary" onClick={() => go('analytics')}>Open analytics</Button><Button onClick={() => go('approvals')}>Reports assigned to me ({awaiting})</Button></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8">
         <Stat label="Total Trainers" value={s.trainers.length} icon={<UserCog size={17} />} onClick={() => go('trainers')} />
         <Stat label="Active Trainers" value={activeTrainers.length} icon={<UserCheck size={17} />} tone="green" onClick={() => go('trainers')} />
         <Stat label="Total Courses" value={s.courses.length} icon={<BookOpen size={17} />} tone="blue" onClick={() => go('courses')} />
@@ -75,8 +80,17 @@ export default function AdminDashboard() {
         <Stat label="Today's Classes" value={todaysClasses.length} sub={`${attDone} attendance submitted`} icon={<CalendarClock size={17} />} tone="blue" onClick={() => go('attendance')} />
         <Stat label="Submitted Today" value={submittedToday} sub={`of ${teaching.length} trainers`} icon={<FileText size={17} />} tone="green" onClick={() => go('reports')} />
         <Stat label="Reports Pending" value={pendingToday} icon={<FileClock size={17} />} tone="orange" onClick={() => go('reports')} />
-        <Stat label="Awaiting Approval" value={awaiting} icon={<CheckCheck size={17} />} tone="purple" onClick={() => go('approvals')} />
       </div>
+      <Card title="My report reviews" pad={false}>
+        <div id="admin-review-indicators" className="grid grid-cols-2 sm:grid-cols-4">
+          {([['Reports assigned to me', mine.length, 'text-ink-900 dark:text-ink-50'], ['Awaiting my review', awaiting, awaiting ? 'text-violet-700 dark:text-violet-300' : 'text-ink-900 dark:text-ink-50'], ['Approved by me', approvedByMe, 'text-emerald-700 dark:text-emerald-400'], ['Requiring trainer correction', needCorrection, needCorrection ? 'text-orange-700 dark:text-orange-400' : 'text-ink-900 dark:text-ink-50']] as const).map(([l, v, c]) => (
+            <button key={l} onClick={() => go('approvals')} className="border-b border-r border-ink-100 p-3 text-left hover:bg-ink-50 dark:border-ink-800 dark:hover:bg-ink-800/40 sm:border-b-0">
+              <div className="text-xs text-ink-500">{l}</div>
+              <div className={cx('font-display text-xl font-bold tabular-nums', c)}>{v}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <div className="grid gap-3 md:grid-cols-3">
         {[

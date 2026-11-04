@@ -18,7 +18,7 @@ import Students from './pages/admin/Students';
 import Assignments from './pages/admin/Assignments';
 import { AdminActivities, AdminAttendance, AdminSyllabusProgress, AuditLogs } from './pages/admin/Monitoring';
 import { AdminWhatsAppUpdates, WhatsAppUpdatesPage } from './pages/trainer/WhatsApp';
-import Reports, { ReportDetail } from './pages/admin/Reports';
+import Reports, { AssignedReports, ReportDetail } from './pages/admin/Reports';
 import Analytics from './pages/admin/Analytics';
 import Settings from './pages/admin/Settings';
 import { NotesIndex, TopicDetail } from './pages/shared/Notes';
@@ -70,7 +70,7 @@ function Router() {
     case 'voice': return <AdminReportsModule value="voice"><AdminWhatsAppUpdates /></AdminReportsModule>;
     case 'activities': return <AdminReportsModule value="activities"><AdminActivities /></AdminReportsModule>;
     case 'reports': return <AdminReportsModule value="reports"><Reports key="r" /></AdminReportsModule>;
-    case 'approvals': return <AdminReportsModule value="approvals"><Reports key="a" approvals /></AdminReportsModule>;
+    case 'approvals': return <AdminReportsModule value="approvals"><AssignedReports key="a" /></AdminReportsModule>;
     case 'exports': return <Exports />;
     case 'roles': return <Roles />;
     case 'report': return <ReportDetail key={id} id={id!} />;

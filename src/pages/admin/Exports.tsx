@@ -47,10 +47,10 @@ export default function Exports() {
       const rows: (string | number)[][] = [];
       s.batchReports.filter((r) => r.date >= from && r.date <= to && batches.some((b) => b.id === r.batchId)).sort((a, b) => a.date.localeCompare(b.date)).forEach((r) => {
         rows.push([r.date, trainerName(s, r.trainerId), s.batches.find((b) => b.id === r.batchId)?.name ?? '', r.status, r.practicals.map((p) => `${p.type}: ${p.text}`).join('; '),
-          r.assignments.map((a) => `${a.name} (due ${a.deadline})`).join('; '), r.doubts.map((d) => d.text).join('; '), r.voiceNames.map((v) => v.text).join('; '),
+          r.assignments.map((a) => `${a.name} (due ${a.deadline})`).join('; '), r.doubts.map((d) => d.text).join('; '), (() => { const w = s.waUpdates.find((x) => x.batchId === r.batchId && x.date === r.date); return (w?.studentIds ?? []).map((id) => { const n = s.students.find((x) => x.id === id)?.name ?? id; const t = w?.voiceNotes?.find((x) => x.studentId === id)?.title; return t ? `${n} – ${t}` : n; }).join('; '); })(),
           r.projects.map((p) => `${p.name} [${p.status}] ${p.assigned}`).join('; '), r.remarks]);
       });
-      return { head: ['Date', 'Trainer', 'Batch', 'Status', 'Practical activities', 'Homework / assignments', 'Doubts', 'WhatsApp voice notes', 'Project work', 'Remarks'], rows };
+      return { head: ['Date', 'Trainer', 'Batch', 'Status', 'Practical activities', 'Homework / assignments', 'Doubts', 'Student voice notes', 'Project work', 'Remarks'], rows };
     }
     if (kind === 'attendance') {
       const rows: (string | number)[][] = [];

@@ -1,3 +1,4 @@
+import { normalizeReports } from '../store/reviews';
 import type {
   AppState, AttMark, Batch, Course, DailyActivity, DailyReport, Notification, Student, TopicProgress, Trainer, User, VoiceNote, WorkLog,
 } from '../types';
@@ -434,7 +435,7 @@ export function createSeed(): AppState {
     p.trainerId = bb.trainerId; p.updatedBy = trainerNameById(bb.trainerId);
     if (fd) { p.syllabusDayId = fd.day.id; p.dayNumber = fd.index + 1; }
   });
-  return state;
+  return normalizeReports(state);
 }
 
 /** master topic notes were written against topic titles; attach them to the matching Python Foundations topics */

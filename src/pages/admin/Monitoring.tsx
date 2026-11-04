@@ -130,16 +130,18 @@ export function AdminActivities() {
   const list = s.activities.filter((a) => a.date === date && `${a.practicals} ${a.homework} ${a.doubts} ${a.nextPlan}`.toLowerCase().includes(q.toLowerCase()));
   const brs = s.batchReports.filter((r) => r.date === date && r.status === 'Submitted');
   const projects = brs.flatMap((r) => r.projects.map((p) => ({ ...p, r }))).filter((p) => `${p.name} ${p.assigned} ${p.students}`.toLowerCase().includes(q.toLowerCase()));
-  const voice = brs.flatMap((r) => r.voiceNames.map((v) => ({ ...v, r }))).filter((v) => v.text.toLowerCase().includes(q.toLowerCase()));
+  const sname = (id: string) => s.students.find((x) => x.id === id)?.name ?? id;
+  const voice = s.waUpdates.filter((w) => w.date === date).flatMap((w) => w.studentIds.map((id) => ({ id: `${w.id}-${id}`, w, student: sname(id), title: w.voiceNotes?.find((x) => x.studentId === id)?.title ?? '' })))
+    .filter((v) => `${v.student} ${v.title}`.toLowerCase().includes(q.toLowerCase()));
   const repId = (tid: string) => s.reports.find((x) => x.trainerId === tid && x.date === date && x.versions.length)?.id;
   return (
     <div>
-      <PageHeader title="Daily Activities" sub="Practicals, homework, project work and WhatsApp updates from submitted batch reports" />
-      <div className="mb-3 grid grid-cols-3 gap-3"><Stat label="Batch reports submitted" value={brs.length} tone="blue" /><Stat label="Project entries" value={brs.reduce((a, r) => a + r.projects.length, 0)} tone="purple" /><Stat label="WhatsApp voice notes" value={brs.reduce((a, r) => a + r.voiceNames.length, 0)} tone="green" /></div>
+      <PageHeader title="Daily Activities" sub="Practicals, homework, project work and student voice notes from batch reports" />
+      <div className="mb-3 grid grid-cols-3 gap-3"><Stat label="Batch reports submitted" value={brs.length} tone="blue" /><Stat label="Project entries" value={brs.reduce((a, r) => a + r.projects.length, 0)} tone="purple" /><Stat label="Student voice notes" value={s.waUpdates.filter((w) => w.date === date).reduce((a, w) => a + w.studentIds.length, 0)} tone="green" /></div>
       <Card pad={false}>
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 p-3 dark:border-ink-800">
           <Input id="ad-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="!w-auto" /><SearchBox value={q} onChange={setQ} placeholder="Search…" />
-          <div className="ml-auto inline-flex rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">{([['activities', 'Activities'], ['projects', 'Project work'], ['voice', 'WhatsApp voice notes']] as const).map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={cx('rounded-md px-2.5 py-1 text-xs font-medium', tab === k ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white' : 'text-ink-500')}>{l}</button>)}</div>
+          <div className="ml-auto inline-flex rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">{([['activities', 'Activities'], ['projects', 'Project work'], ['voice', 'Student Voice Notes']] as const).map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={cx('rounded-md px-2.5 py-1 text-xs font-medium', tab === k ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white' : 'text-ink-500')}>{l}</button>)}</div>
         </div>
         {tab === 'activities' && (
           <Table head={['Trainer', 'Batch', 'Practicals', 'Homework / assignments', 'Doubts', 'Remarks', 'Next class']} minW={1100} empty={!list.length && <Empty title="No activities logged for this date" />}>
@@ -152,8 +154,8 @@ export function AdminActivities() {
           </Table>
         )}
         {tab === 'voice' && (
-          <Table head={['Trainer', 'Batch', 'Voice note / update shared on WhatsApp', '']} minW={640} empty={!voice.length && <Empty title="No WhatsApp voice notes recorded for this date" />}>
-            {voice.map((v) => <tr key={v.id}><td className="whitespace-nowrap">{trainerName(s, v.r.trainerId)}</td><td className="whitespace-nowrap">{s.batches.find((b) => b.id === v.r.batchId)?.name}</td><td>{v.text}</td><td>{repId(v.r.trainerId) && <Button size="sm" variant="ghost" onClick={() => go({ page: 'report', id: repId(v.r.trainerId) })}>Report</Button>}</td></tr>)}
+          <Table head={['Trainer', 'Batch', 'Student', 'Voice note', '']} minW={640} empty={!voice.length && <Empty title="No student voice notes recorded for this date" />}>
+            {voice.map((v) => <tr key={v.id}><td className="whitespace-nowrap">{trainerName(s, v.w.trainerId)}</td><td className="whitespace-nowrap">{s.batches.find((b) => b.id === v.w.batchId)?.name}</td><td className="whitespace-nowrap">{v.student}</td><td className={cx(!v.title && 'text-xs italic text-ink-400')}>{v.title || 'no description'}</td><td>{repId(v.w.trainerId) && <Button size="sm" variant="ghost" onClick={() => go({ page: 'report', id: repId(v.w.trainerId) })}>Report</Button>}</td></tr>)}
           </Table>
         )}
       </Card>

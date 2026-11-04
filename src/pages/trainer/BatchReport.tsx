@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertCircle, CheckCircle2, Eye, Lock, MessageCircle, Pencil, Plus, Save, Send, Trash2, Check, X } from 'lucide-react';
 import { useApp } from '../../store/AppStore';
 import { useBatchReportActions, validateBatchForm, type BatchReportForm } from '../../store/actions';
-import { attendanceFor, batchReportFor, buildSnapshot, courseName, isDayLocked, lessonPlan, studentsOf } from '../../store/selectors';
+import { attendanceFor, batchReportFor, batchReportStatus, buildSnapshot, courseName, isDayLocked, lessonPlan, studentsOf } from '../../store/selectors';
 import { DOUBT_TYPES, PRACTICAL_TYPES, PROJECT_STATUSES, type AttMark, type Topic, type TopicStatus } from '../../types';
 import { Badge, Button, Card, Empty, Field, Input, KV, Modal, PageHeader, Progress, Select, Textarea } from '../../components/common/ui';
 import { BatchBlock } from '../../components/common/ReportView';
@@ -147,7 +147,7 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
   };
 
   const trySubmit = () => {
-    const e = validateBatchForm(s, b.id, f);
+    const e = validateBatchForm(s, b.id, f, date);
     setErrors(e);
     if (Object.keys(e).length) {
       const first = ['topics', 'attendance', 'practicals', 'assignments', 'doubts', 'voiceNames', 'projects'].indexOf(Object.keys(e)[0]);
@@ -185,7 +185,9 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
         <div className="min-w-0 space-y-4">
           <Card>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <KV k="Batch" v={b.name} /><KV k="Course" v={courseName(s, b.courseId)} /><KV k="Report date" v={fmtDate(date)} /><KV k="Trainer" v={user!.name} />
+              <KV k="Batch" v={b.name} /><KV k="Course" v={courseName(s, b.courseId)} /><KV k="Class date" v={fmtDate(date)} /><KV k="Class time" v={`${b.startTime}–${b.endTime}`} />
+              <KV k="Lesson day" v={plan.selected ? `Day ${plan.dayNumber} – ${plan.flat?.day.title ?? ''}` : <button className="text-sm font-medium text-amber-700 hover:underline dark:text-amber-300" onClick={() => go('t-lesson')}>Not selected · select in Today's Lesson</button>} />
+              <KV k="Report status" v={<Badge>{batchReportStatus(s, user!.trainerId!, b.id, date)}</Badge>} />
             </dl>
           </Card>
 
@@ -286,8 +288,17 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
             {!readOnly && <Button variant="secondary" size="sm" icon={<Plus size={14} />} onClick={() => set('doubts', [...f.doubts, { id: uid('di'), type: 'Question asked', text: '' }])}>Add entry</Button>}
           </Step>
 
-          <Step n={6} title="WhatsApp voice note names" sub="Titles of the voice notes and updates you shared on WhatsApp for this batch today" error={errors.voiceNames}>
-            <BulletList items={f.voiceNames} onChange={(v) => set('voiceNames', v)} disabled={readOnly} placeholder="e.g. HTML Day 1 – Class Explanation" icon={<MessageCircle size={14} className="shrink-0 text-emerald-600" />} />
+          <Step n={6} title="Student Voice Notes" sub="Taken from your saved Student Voice Notes for this batch and class date, so you do not enter them twice" error={errors.voiceNames}
+            action={!dayLocked && <Button size="sm" variant="secondary" onClick={() => go('t-voice')}>Edit voice notes</Button>}>
+            {(() => {
+              const wa = s.waUpdates.find((w) => w.batchId === b.id && w.date === date);
+              const nameOf = (id: string) => s.students.find((x) => x.id === id)?.name ?? id;
+              return wa?.studentIds.length ? (
+                <ul className="space-y-1 text-sm">{wa.studentIds.map((id) => { const vn = wa.voiceNotes?.find((x) => x.studentId === id); return (
+                  <li key={id} className="flex items-start gap-2"><MessageCircle size={14} className="mt-0.5 shrink-0 text-emerald-600" /><span className="min-w-0 flex-1 text-ink-900 dark:text-ink-50">{nameOf(id)}{vn?.title ? <span className="text-ink-600 dark:text-ink-300"> – {vn.title}</span> : <span className="text-xs italic text-ink-400"> – no description</span>}</span><span className="text-[11px] text-ink-400">{fmtDate((vn?.submittedAt ?? date).slice(0, 10))}</span></li>
+                ); })}</ul>
+              ) : <p className="text-sm italic text-ink-400">No student voice notes saved for this batch on {fmtDate(date)}.</p>;
+            })()}
           </Step>
 
           <Step n={7} title="Project work / assignment" sub="Optional · one entry per project" error={errors.projects}>
@@ -321,7 +332,7 @@ export function BatchReportPage({ batchId }: { batchId?: string }) {
                   ['Attendance', studs.every((st) => f.marks[st.id]) && !studs.some((st) => ((f.marks[st.id] === 'Absent' || f.marks[st.id] === 'Leave') && !(f.reasons[st.id] ?? '').trim()) || (f.marks[st.id] === 'Late' && !f.lateTimes[st.id])), 2],
                   ['Practical activities', f.practicals.some((p) => p.text.trim()), 3],
                   ['Assignments', !f.assignments.some((a) => !a.name.trim() || !a.deadline), 4],
-                  ['Doubts', true, 5], ['WhatsApp voice notes', !s.settings.requireVoiceNote || f.voiceNames.length > 0, 6], ['Project work', !f.projects.some((p) => !p.name.trim()), 7], ['Remarks', true, 8]].map(([k, ok, n]) => (
+                  ['Doubts', true, 5], ['Student voice notes', !s.settings.requireVoiceNote || !!s.waUpdates.find((w) => w.batchId === b.id && w.date === date)?.studentIds.length, 6], ['Project work', !f.projects.some((p) => !p.name.trim()), 7], ['Remarks', true, 8]].map(([k, ok, n]) => (
                   <li key={k as string}><button onClick={() => document.getElementById(`brs-${n}`)?.scrollIntoView({ behavior: 'smooth' })} className="flex w-full items-center gap-2 text-left hover:text-royal-600">{ok ? <CheckCircle2 size={15} className="text-emerald-500" /> : <AlertCircle size={15} className="text-amber-500" />}<span className="text-ink-700 dark:text-ink-200">{k as string}</span></button></li>
                 ))}
               </ul>

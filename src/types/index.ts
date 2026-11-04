@@ -155,14 +155,14 @@ export interface StudentVoiceNoteItem {
   submittedAt?: string;
 }
 
-/** Students who sent WhatsApp updates or voice notes for a batch on a class date (one record per batch + date). */
+/** Student voice notes for a batch on a class date (one record per batch + date). The interface name is kept so saved data still loads. */
 export interface WhatsAppUpdate {
   id: string;
   trainerId: string;
   batchId: string;
   date: string;
   studentIds: string[];
-  /** student voice note details */
+  /** what each student's voice note was about, as entered by the trainer (title may be blank) */
   voiceNotes?: { studentId: string; title: string; submittedAt?: string }[];
   /** names from the upload that matched no batch student, kept for reference only */
   unmatched: string[];
@@ -336,6 +336,8 @@ export interface BatchSummary {
   studentTasks?: { text: string; status: 'Completed' | 'Not Completed' | 'Not marked' }[];
   whatsappStudents?: string[];
   studentVoiceNotes?: StudentVoiceNoteItem[];
+  /** next lesson day from the published Notes of Lesson, after the day taught */
+  nextTopics?: { day: string; titles: string[] };
   batchRemarks?: string;
   completed: string[];
   partial: { title: string; note: string; day?: string }[];
@@ -360,8 +362,31 @@ export interface ReportSnapshot {
   remarks: string;
   exception?: string;
 }
-export interface ReportVersion { version: number; submittedAt: string; late: boolean; snapshot: ReportSnapshot }
+export interface ReportVersion {
+  version: number;
+  submittedAt: string;
+  late: boolean;
+  snapshot: ReportSnapshot;
+  /** admin reviewers this version was sent to (kept per version, so later changes never rewrite history) */
+  reviewerIds?: string[];
+  /** batch reports included in this version */
+  batchReportIds?: string[];
+}
 export interface ReportEvent { at: string; by: string; action: string; reason?: string }
+export type ReviewAction = 'Approved' | 'Correction Requested' | 'Rejected';
+/** one reviewer's decision on one report version; never edited after it is saved */
+export interface ReviewRecord {
+  reviewerId: string;
+  reviewerName: string;
+  action: ReviewAction;
+  remarks: string;
+  reviewedAt: string;
+  reportVersion: number;
+}
+/**
+ * Consolidated daily report (one per trainer per date).
+ * Spec field names: reportId = id, reportDate = date, overallRemarks = draftRemarks, submissionStatus = status.
+ */
 export interface DailyReport {
   id: string;
   trainerId: string;
@@ -369,7 +394,19 @@ export interface DailyReport {
   status: ReportStatus;
   draftRemarks: string;
   exception?: string;
+  /** admin user IDs chosen by the trainer; editable while Draft or Correction Requested */
+  selectedReviewerIds?: string[];
+  /** batch reports in the latest submitted version */
+  batchReportIds?: string[];
+  /** latest submission time */
+  submittedAt?: string;
+  /** latest version number (0 before the first submission) */
+  currentVersion?: number;
+  /** approval time once every selected reviewer has approved */
+  approvedAt?: string;
   versions: ReportVersion[];
+  /** per-reviewer, per-version decisions */
+  reviewHistory?: ReviewRecord[];
   events: ReportEvent[];
   adminRemarks: { at: string; by: string; text: string }[];
 }

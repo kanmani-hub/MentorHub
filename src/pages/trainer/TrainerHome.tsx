@@ -6,7 +6,7 @@ import {
 } from '../../store/selectors';
 import { Avatar, Badge, Button, Card, Empty, Field, Input, KV, Modal, PageHeader, Progress, SimNote, Stat, Table } from '../../components/common/ui';
 import { BatchDetail } from '../shared/BatchDetail';
-import { cx, fmtDate, fmtDateTime, fmtDay, fmtMins, fmtTime12, nowHHMM, todayISO } from '../../utils';
+import { cx, fmtDate, fmtDateTime, fmtDay, fmtMins, fmtTime12, nowHHMM, prevWeekdays, todayISO } from '../../utils';
 import { useWorkDate } from './common';
 import { TrainerNolSummary } from './NolTrainer';
 
@@ -108,6 +108,32 @@ export function TrainerDashboard() {
         <Stat label="Teaching time today" value={fmtMins(wm.teaching)} sub="From classes held" icon={<Clock size={17} />} />
         <Stat label="Daily report" value={<Badge>{status}</Badge>} icon={<FileText size={17} />} tone="purple" onClick={() => go('t-report')} />
       </div>
+
+      {(() => {
+        // report indicators: working days in the last two weeks plus today
+        const days = [today, ...prevWeekdays(today, 10)].filter((d) => classBatchesOn(s, tid, d).length);
+        const awaiting = days.filter((d) => ['Pending', 'Draft', 'Overdue'].includes(derivedStatus(s, tid, d))).length;
+        const n = (st: string) => s.reports.filter((r) => r.status === st).length;
+        const items: [string, number, string, string][] = [
+          ['Awaiting submission', awaiting, 't-report', awaiting ? 'text-amber-700 dark:text-amber-400' : 'text-ink-900 dark:text-ink-50'],
+          ['Submitted', n('Submitted'), 't-history', 'text-royal-700 dark:text-blue-300'],
+          ['Under admin review', n('Under Review'), 't-history', 'text-violet-700 dark:text-violet-300'],
+          ['Correction requests', n('Correction Requested'), 't-history', n('Correction Requested') ? 'text-orange-700 dark:text-orange-400' : 'text-ink-900 dark:text-ink-50'],
+          ['Approved', n('Approved'), 't-history', 'text-emerald-700 dark:text-emerald-400'],
+        ];
+        return (
+          <Card title="My daily reports" pad={false}>
+            <div id="trainer-report-indicators" className="grid grid-cols-2 sm:grid-cols-5">
+              {items.map(([l, v, page, c]) => (
+                <button key={l} onClick={() => go(page)} className="border-b border-r border-ink-100 p-3 text-left hover:bg-ink-50 dark:border-ink-800 dark:hover:bg-ink-800/40 sm:border-b-0">
+                  <div className="text-xs text-ink-500">{l}</div>
+                  <div className={cx('font-display text-xl font-bold tabular-nums', c)}>{v}</div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Today's timetable" className="lg:col-span-2" pad={false}>

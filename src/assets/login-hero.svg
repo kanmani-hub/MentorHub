@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 520" role="img" aria-labelledby="t d">
+  <title id="t">Trainer Hub training ecosystem</title>
+  <desc id="d">A trainer presents to students working on laptops. A central learning dashboard shows course progress and analytics, connected to syllabus, attendance, topic progress and daily report panels.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b2a55"/><stop offset="1" stop-color="#111c3d"/></linearGradient>
+    <linearGradient id="panelEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b7cff" stop-opacity=".55"/><stop offset=".5" stop-color="#8a6bff" stop-opacity=".18"/><stop offset="1" stop-color="#5b7cff" stop-opacity=".35"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22325f"/><stop offset="1" stop-color="#18244a"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#3b5bdb"/></linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a48bff"/><stop offset="1" stop-color="#6d4fe0"/></linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b5bdb"/><stop offset="1" stop-color="#8fb0ff"/></linearGradient>
+    <linearGradient id="barV" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#6d4fe0"/><stop offset="1" stop-color="#c3b2ff"/></linearGradient>
+    <linearGradient id="skinA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8c3a6"/><stop offset="1" stop-color="#c79a7c"/></linearGradient>
+    <linearGradient id="skinB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c99877"/><stop offset="1" stop-color="#9c6b4f"/></linearGradient>
+    <linearGradient id="skinC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#dcae8e"/><stop offset="1" stop-color="#b3815f"/></linearGradient>
+    <linearGradient id="shirtT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c6ef5"/><stop offset="1" stop-color="#2f49b8"/></linearGradient>
+    <linearGradient id="shirtS1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b6ff0"/><stop offset="1" stop-color="#5b3fc4"/></linearGradient>
+    <linearGradient id="shirtS2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fb6c9"/><stop offset="1" stop-color="#22798a"/></linearGradient>
+    <linearGradient id="laptop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9d3ec"/><stop offset="1" stop-color="#8e9bbd"/></linearGradient>
+    <linearGradient id="screenGlow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7aa2ff"/><stop offset="1" stop-color="#3b5bdb"/></linearGradient>
+    <radialGradient id="orb1" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#4c6ef5" stop-opacity=".55"/><stop offset="1" stop-color="#4c6ef5" stop-opacity="0"/></radialGradient>
+    <radialGradient id="orb2" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#7c5cf0" stop-opacity=".45"/><stop offset="1" stop-color="#7c5cf0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="floor" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#5b7cff" stop-opacity=".28"/><stop offset="1" stop-color="#5b7cff" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#8fa8ff" stroke-opacity=".07" stroke-width="1"/></pattern>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".55"/></filter>
+    <filter id="softSm" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#020617" flood-opacity=".5"/></filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+
+  <!-- atmosphere -->
+  <rect width="640" height="520" fill="url(#grid)"/>
+  <circle cx="420" cy="170" r="210" fill="url(#orb1)"/>
+  <circle cx="150" cy="380" r="190" fill="url(#orb2)"/>
+  <ellipse cx="330" cy="470" rx="280" ry="38" fill="url(#floor)"/>
+
+  <!-- connectors -->
+  <g fill="none" stroke="#8fa8ff" stroke-opacity=".45" stroke-width="1.5" stroke-dasharray="4 6" stroke-linecap="round">
+    <path d="M168 112 C 205 112, 205 150, 232 150"/>
+    <path d="M168 238 C 200 238, 205 230, 232 228"/>
+    <path d="M530 106 C 500 106, 500 140, 480 140"/>
+    <path d="M532 262 C 505 262, 500 248, 480 246"/>
+  </g>
+  <g fill="#9db4ff"><circle cx="232" cy="150" r="3"/><circle cx="232" cy="228" r="3"/><circle cx="480" cy="140" r="3"/><circle cx="480" cy="246" r="3"/></g>
+
+  <!-- central dashboard -->
+  <g filter="url(#soft)">
+    <rect x="226" y="62" width="262" height="226" rx="16" fill="url(#panel)"/>
+    <rect x="226.5" y="62.5" width="261" height="225" rx="15.5" fill="none" stroke="url(#panelEdge)"/>
+  </g>
+  <circle cx="244" cy="80" r="3.5" fill="#ff6b6b" fill-opacity=".8"/><circle cx="256" cy="80" r="3.5" fill="#fcc419" fill-opacity=".8"/><circle cx="268" cy="80" r="3.5" fill="#51cf66" fill-opacity=".8"/>
+  <rect x="300" y="76" width="120" height="8" rx="4" fill="#2c3d70"/>
+  <!-- sidebar -->
+  <rect x="238" y="96" width="42" height="180" rx="8" fill="#16224a"/>
+  <rect x="246" y="106" width="26" height="26" rx="7" fill="url(#blue)"/>
+  <path d="M253 119h12M259 113v12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+  <g fill="#34467d"><rect x="248" y="144" width="22" height="5" rx="2.5"/><rect x="248" y="158" width="22" height="5" rx="2.5"/><rect x="248" y="172" width="22" height="5" rx="2.5"/><rect x="248" y="186" width="22" height="5" rx="2.5"/></g>
+  <rect x="248" y="158" width="22" height="5" rx="2.5" fill="#5b8cff"/>
+  <!-- KPI tiles -->
+  <rect x="290" y="96" width="58" height="40" rx="8" fill="#1d2b58"/><rect x="298" y="104" width="22" height="4" rx="2" fill="#6f80b3"/><rect x="298" y="114" width="30" height="12" rx="3" fill="#dfe7ff"/>
+  <rect x="354" y="96" width="58" height="40" rx="8" fill="#1d2b58"/><rect x="362" y="104" width="26" height="4" rx="2" fill="#6f80b3"/><rect x="362" y="114" width="22" height="12" rx="3" fill="#b9a6ff"/>
+  <rect x="418" y="96" width="58" height="40" rx="8" fill="#1d2b58"/><rect x="426" y="104" width="18" height="4" rx="2" fill="#6f80b3"/><rect x="426" y="114" width="28" height="12" rx="3" fill="#8fe3b0"/>
+  <!-- bar chart -->
+  <rect x="290" y="144" width="122" height="88" rx="8" fill="#17244b"/>
+  <g stroke="#2b3b6c" stroke-width="1"><path d="M300 210h102M300 190h102M300 170h102"/></g>
+  <rect x="304" y="186" width="10" height="34" rx="3" fill="url(#bar)"/>
+  <rect x="320" y="172" width="10" height="48" rx="3" fill="url(#barV)"/>
+  <rect x="336" y="192" width="10" height="28" rx="3" fill="url(#bar)"/>
+  <rect x="352" y="162" width="10" height="58" rx="3" fill="url(#barV)"/>
+  <rect x="368" y="178" width="10" height="42" rx="3" fill="url(#bar)"/>
+  <rect x="384" y="158" width="10" height="62" rx="3" fill="url(#barV)"/>
+  <path d="M304 186 L 325 170 L 341 182 L 357 160 L 373 168 L 389 152" fill="none" stroke="#e5ecff" stroke-opacity=".85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="389" cy="152" r="3.2" fill="#fff"/>
+  <!-- progress ring -->
+  <rect x="418" y="144" width="58" height="88" rx="8" fill="#17244b"/>
+  <circle cx="447" cy="178" r="18" fill="none" stroke="#2b3b6c" stroke-width="6"/>
+  <circle cx="447" cy="178" r="18" fill="none" stroke="url(#violet)" stroke-width="6" stroke-linecap="round" stroke-dasharray="88 113" transform="rotate(-90 447 178)"/>
+  <text x="447" y="182" text-anchor="middle" font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="11" font-weight="700" fill="#e5ecff">78%</text>
+  <rect x="428" y="206" width="38" height="4" rx="2" fill="#6f80b3"/><rect x="434" y="216" width="26" height="4" rx="2" fill="#3f5190"/>
+  <!-- attendance rows -->
+  <rect x="290" y="238" width="186" height="40" rx="8" fill="#17244b"/>
+  <g><circle cx="304" cy="251" r="5" fill="#51cf66"/><path d="M301.5 251l1.7 1.7 3.3-3.4" stroke="#0b2a16" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="315" y="248" width="56" height="5" rx="2.5" fill="#4a5d97"/>
+     <circle cx="304" cy="266" r="5" fill="#51cf66"/><path d="M301.5 266l1.7 1.7 3.3-3.4" stroke="#0b2a16" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="315" y="263" width="44" height="5" rx="2.5" fill="#4a5d97"/>
+     <rect x="392" y="248" width="74" height="6" rx="3" fill="#2b3b6c"/><rect x="392" y="248" width="60" height="6" rx="3" fill="url(#blue)"/>
+     <rect x="392" y="262" width="74" height="6" rx="3" fill="#2b3b6c"/><rect x="392" y="262" width="46" height="6" rx="3" fill="url(#violet)"/></g>
+
+  <!-- left card: syllabus tree -->
+  <g filter="url(#softSm)"><rect x="40" y="70" width="128" height="94" rx="12" fill="url(#card)"/></g>
+  <rect x="40.5" y="70.5" width="127" height="93" rx="11.5" fill="none" stroke="#5b7cff" stroke-opacity=".3"/>
+  <rect x="52" y="82" width="16" height="16" rx="5" fill="url(#blue)"/><path d="M56 87h8M56 91h8M56 95h5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="74" y="86" width="52" height="7" rx="3.5" fill="#dfe7ff"/>
+  <g stroke="#6f80b3" stroke-width="1.4" fill="none"><path d="M60 104v46M60 116h12M72 116v24M72 128h10M72 140h10"/></g>
+  <g><rect x="58" y="110" width="0" height="0"/>
+     <rect x="76" y="112" width="44" height="7" rx="3.5" fill="#5b8cff"/>
+     <rect x="84" y="125" width="38" height="6" rx="3" fill="#8a6bff"/>
+     <rect x="84" y="137" width="50" height="6" rx="3" fill="#4a5d97"/>
+     <rect x="68" y="148" width="62" height="6" rx="3" fill="#34467d"/></g>
+
+  <!-- left card: attendance -->
+  <g filter="url(#softSm)"><rect x="52" y="196" width="116" height="78" rx="12" fill="url(#card)"/></g>
+  <rect x="52.5" y="196.5" width="115" height="77" rx="11.5" fill="none" stroke="#5b7cff" stroke-opacity=".3"/>
+  <rect x="64" y="208" width="16" height="16" rx="5" fill="#2f9e44"/><path d="M68 216l3 3 5-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="86" y="212" width="46" height="7" rx="3.5" fill="#dfe7ff"/>
+  <g>
+    <circle cx="70" cy="240" r="6" fill="#51cf66"/><circle cx="86" cy="240" r="6" fill="#51cf66"/><circle cx="102" cy="240" r="6" fill="#51cf66"/><circle cx="118" cy="240" r="6" fill="#fcc419"/><circle cx="134" cy="240" r="6" fill="#51cf66"/><circle cx="150" cy="240" r="6" fill="#ff8787"/>
+    <rect x="64" y="256" width="92" height="6" rx="3" fill="#2b3b6c"/><rect x="64" y="256" width="78" height="6" rx="3" fill="#51cf66"/>
+  </g>
+
+  <!-- right card: daily report -->
+  <g filter="url(#softSm)"><rect x="530" y="58" width="96" height="104" rx="12" fill="url(#card)"/></g>
+  <rect x="530.5" y="58.5" width="95" height="103" rx="11.5" fill="none" stroke="#8a6bff" stroke-opacity=".35"/>
+  <path d="M552 72h34l12 12v50a5 5 0 0 1-5 5h-41a5 5 0 0 1-5-5V77a5 5 0 0 1 5-5z" fill="#e9eeff"/>
+  <path d="M586 72v8a4 4 0 0 0 4 4h8" fill="#c5d0f5"/>
+  <g fill="#9aa8d6"><rect x="555" y="92" width="32" height="4" rx="2"/><rect x="555" y="101" width="38" height="4" rx="2"/><rect x="555" y="110" width="26" height="4" rx="2"/></g>
+  <circle cx="588" cy="128" r="10" fill="url(#violet)"/><path d="M583.5 128l3 3 5.5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="544" y="146" width="68" height="6" rx="3" fill="#4a5d97"/>
+
+  <!-- right card: topic progress -->
+  <g filter="url(#softSm)"><rect x="532" y="214" width="96" height="92" rx="12" fill="url(#card)"/></g>
+  <rect x="532.5" y="214.5" width="95" height="91" rx="11.5" fill="none" stroke="#5b7cff" stroke-opacity=".3"/>
+  <rect x="544" y="226" width="44" height="7" rx="3.5" fill="#dfe7ff"/>
+  <g>
+    <rect x="544" y="244" width="72" height="7" rx="3.5" fill="#2b3b6c"/><rect x="544" y="244" width="72" height="7" rx="3.5" fill="#51cf66"/>
+    <rect x="544" y="260" width="72" height="7" rx="3.5" fill="#2b3b6c"/><rect x="544" y="260" width="50" height="7" rx="3.5" fill="url(#blue)"/>
+    <rect x="544" y="276" width="72" height="7" rx="3.5" fill="#2b3b6c"/><rect x="544" y="276" width="28" height="7" rx="3.5" fill="#fcc419"/>
+    <rect x="544" y="292" width="72" height="5" rx="2.5" fill="#2b3b6c"/>
+  </g>
+
+  <!-- presentation screen behind trainer -->
+  <g filter="url(#softSm)"><rect x="30" y="318" width="132" height="84" rx="10" fill="#16224a"/></g>
+  <rect x="30.5" y="318.5" width="131" height="83" rx="9.5" fill="none" stroke="#5b7cff" stroke-opacity=".35"/>
+  <rect x="42" y="330" width="64" height="7" rx="3.5" fill="#dfe7ff"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="9" fill="#9db4ff">
+    <text x="42" y="354">for i in range(5):</text>
+    <text x="54" y="367" fill="#c3b2ff">print(i)</text>
+  </g>
+  <rect x="42" y="378" width="40" height="6" rx="3" fill="#4a5d97"/><rect x="88" y="378" width="24" height="6" rx="3" fill="#5b8cff"/>
+  <path d="M96 402v22M80 424h32" stroke="#3f5190" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- trainer -->
+  <g>
+    <ellipse cx="224" cy="474" rx="40" ry="7" fill="#020617" fill-opacity=".45"/>
+    <path d="M206 412 h34 l3 60 h-12 l-6 -40 l-6 40 h-12z" fill="#1c2747"/>
+    <path d="M196 362 q28 -12 56 0 l4 54 q-32 10 -64 0z" fill="url(#shirtT)"/>
+    <path d="M216 356 l8 10 l8 -10" fill="#dfe7ff"/>
+    <path d="M198 368 q-20 2 -30 -12" stroke="url(#shirtT)" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <circle cx="167" cy="354" r="6.5" fill="url(#skinA)"/>
+    <path d="M250 370 q10 24 -2 44" stroke="#2f49b8" stroke-width="13" stroke-linecap="round" fill="none"/>
+    <rect x="216" y="342" width="16" height="14" rx="6" fill="url(#skinA)"/>
+    <ellipse cx="224" cy="328" rx="16" ry="18" fill="url(#skinA)"/>
+    <path d="M207 326 q1 -24 19 -22 q16 1 15 20 q-6 -10 -18 -10 q-10 1 -16 12z" fill="#1d1a2b"/>
+  </g>
+
+  <!-- students working on laptops (seen from the front, laptop lids toward the viewer) -->
+  <g>
+    <!-- student 1 -->
+    <path d="M318 436 q0 -44 40 -50 q40 6 40 50z" fill="url(#shirtS1)"/>
+    <rect x="350" y="370" width="16" height="16" rx="6" fill="url(#skinB)"/>
+    <ellipse cx="358" cy="354" rx="15.5" ry="17.5" fill="url(#skinB)"/>
+    <path d="M341.5 354 q-2 -25 17.5 -25 q18 0 16.5 23 q-3 -12 -17 -13 q-11 1 -17 15z" fill="#141022"/>
+    <ellipse cx="358" cy="360" rx="13" ry="9" fill="#7aa2ff" opacity=".07"/>
+    <!-- student 2 -->
+    <path d="M466 436 q0 -42 38 -48 q38 6 38 48z" fill="url(#shirtS2)"/>
+    <rect x="496" y="372" width="16" height="16" rx="6" fill="url(#skinC)"/>
+    <ellipse cx="504" cy="356" rx="15.5" ry="17.5" fill="url(#skinC)"/>
+    <path d="M487.5 358 q-3 -29 17.5 -29 q19 0 16.5 27 q-2 -11 -16.5 -13 q-12 2 -17.5 15z" fill="#3a2414"/>
+    <path d="M489 350 q-6 18 -2 32" stroke="#3a2414" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <ellipse cx="504" cy="362" rx="13" ry="9" fill="#7aa2ff" opacity=".07"/>
+    <!-- desk -->
+    <rect x="292" y="432" width="290" height="11" rx="5.5" fill="#27355f"/>
+    <rect x="306" y="443" width="8" height="30" fill="#1c2747"/><rect x="560" y="443" width="8" height="30" fill="#1c2747"/>
+    <!-- laptop 1 (lid back) -->
+    <path d="M326 433 l6 -42 h52 l6 42z" fill="url(#laptop)"/>
+    <path d="M331 433 l5 -37 h44 l5 37z" fill="#b6c2e2"/>
+    <circle cx="358" cy="413" r="6" fill="url(#blue)"/><path d="M355 413h6M358 410v6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+    <rect x="318" y="430" width="80" height="5" rx="2.5" fill="#d8def0"/>
+    <!-- laptop 2 (lid back) -->
+    <path d="M472 433 l6 -42 h52 l6 42z" fill="url(#laptop)"/>
+    <path d="M477 433 l5 -37 h44 l5 37z" fill="#b6c2e2"/>
+    <circle cx="504" cy="413" r="6" fill="url(#violet)"/><path d="M501 413h6M504 410v6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+    <rect x="464" y="430" width="80" height="5" rx="2.5" fill="#d8def0"/>
+    <!-- small screen-light glows on the desk -->
+    <ellipse cx="358" cy="436" rx="34" ry="3" fill="#7aa2ff" opacity=".25"/><ellipse cx="504" cy="436" rx="34" ry="3" fill="#a48bff" opacity=".25"/>
+  </g>
+
+  <!-- signal from trainer to dashboard and students -->
+  <g fill="none" stroke="#a48bff" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="3 6" stroke-linecap="round">
+    <path d="M252 340 C 270 320, 290 305, 300 290"/>
+    <path d="M430 290 C 430 305, 470 300, 480 318"/>
+  </g>
+  <g filter="url(#glow)" fill="#a48bff" opacity=".9"><circle cx="300" cy="290" r="3"/><circle cx="480" cy="318" r="3"/></g>
+  <circle cx="300" cy="290" r="2.5" fill="#efeaff"/><circle cx="480" cy="318" r="2.5" fill="#efeaff"/>
+
+  <!-- sparkles -->
+  <g fill="#c3d2ff" opacity=".7"><circle cx="196" cy="40" r="1.6"/><circle cx="520" cy="30" r="1.4"/><circle cx="612" cy="190" r="1.6"/><circle cx="30" cy="300" r="1.4"/><circle cx="470" cy="330" r="1.2"/></g>
+</svg>

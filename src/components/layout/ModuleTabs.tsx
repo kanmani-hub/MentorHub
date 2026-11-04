@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useApp } from '../../store/AppStore';
+import { myReview } from '../../store/reviews';
 import { cx } from '../../utils';
 
 /** Sub-page switcher inside one main module (keeps the sidebar at its fixed module count). */
@@ -20,13 +21,13 @@ export function ModuleTabs({ value, tabs }: { value: string; tabs: { id: string;
 }
 
 export function AdminReportsModule({ value, children }: { value: string; children: ReactNode }) {
-  const { raw } = useApp();
-  const awaiting = raw.reports.filter((r) => r.status === 'Submitted' || r.status === 'Under Review').length;
-  return <><ModuleTabs value={value} tabs={[{ id: 'reports', label: 'Daily Trainer Reports' }, { id: 'approvals', label: 'Report Approvals', badge: awaiting }, { id: 'activities', label: 'Activities & Project Work' }, { id: 'voice', label: 'WhatsApp Updates' }]} />{children}</>;
+  const { raw, user } = useApp();
+  const awaiting = raw.reports.filter((r) => myReview(r, user?.id).awaiting).length;
+  return <><ModuleTabs value={value} tabs={[{ id: 'reports', label: 'Daily Trainer Reports' }, { id: 'approvals', label: 'Reports Assigned to Me', badge: awaiting }, { id: 'activities', label: 'Activities & Project Work' }, { id: 'voice', label: 'Student Voice Notes' }]} />{children}</>;
 }
 
 export function TrainerReportModule({ value, children }: { value: string; children: ReactNode }) {
   const { raw, user } = useApp();
   const corr = raw.reports.filter((r) => r.trainerId === user?.trainerId && r.status === 'Correction Requested').length;
-  return <><ModuleTabs value={value} tabs={[{ id: 't-batch-report', label: 'Batch Reports' }, { id: 't-report', label: 'Consolidated Report', badge: corr }, { id: 't-voice', label: 'WhatsApp Updates' }, { id: 't-activities', label: 'Activity Log' }]} />{children}</>;
+  return <><ModuleTabs value={value} tabs={[{ id: 't-batch-report', label: 'Batch Reports' }, { id: 't-report', label: 'Consolidated Report', badge: corr }, { id: 't-voice', label: 'Student Voice Notes' }, { id: 't-activities', label: 'Activity Log' }]} />{children}</>;
 }

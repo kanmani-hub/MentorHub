@@ -42,7 +42,9 @@ import {
   Table,
   Textarea,
 } from '../../components/common/ui';
-import { ExportModal, getStudentVoiceNotes } from '../../components/common/ReportView';
+import { BatchBlock, ExportModal } from '../../components/common/ReportView';
+import { ReviewerStatusList } from '../trainer/Report';
+import { assignedTo, myReview, reviewProgress, versionReviewerIds } from '../../store/reviews';
 import { cx, fmtDate, fmtDateTime, minutesBetween, todayISO } from '../../utils';
 
 const ALL_STATUSES: DerivedReportStatus[] = [
@@ -155,8 +157,72 @@ function useActionModals() {
   };
 }
 
+/** Admin's own review queue: only reports where this admin is one of the trainer's selected reviewers. */
+export function AssignedReports() {
+  const { state: s, user, go } = useApp();
+  const me = user!.id;
+  const [date, setDate] = useState('');
+  const [trainer, setTrainer] = useState('All');
+  const [course, setCourse] = useState('All');
+  const [batch, setBatch] = useState('All');
+  const [status, setStatus] = useState('Awaiting');
+  const mine = assignedTo(s, me);
+  const name = (id: string) => s.users.find((u) => u.id === id)?.name ?? 'Former admin';
+  const rows = mine
+    .map((r) => ({ r, snap: r.versions.at(-1)!.snapshot, my: myReview(r, me), prog: reviewProgress(r) }))
+    .filter(({ r, snap, my }) =>
+      (!date || r.date === date) &&
+      (trainer === 'All' || r.trainerId === trainer) &&
+      (course === 'All' || snap.batches.some((b) => s.batches.find((y) => y.id === b.batchId)?.courseId === course)) &&
+      (batch === 'All' || snap.batches.some((b) => b.batchId === batch)) &&
+      (status === 'All' || (status === 'Awaiting' ? my.awaiting : r.status === status)))
+    .sort((a, b) => Number(b.my.awaiting) - Number(a.my.awaiting) || b.r.date.localeCompare(a.r.date));
+  const myDecisions = mine.flatMap((r) => (r.reviewHistory ?? []).filter((h) => h.reviewerId === me).map((h) => ({ h, r }))).sort((a, b) => b.h.reviewedAt.localeCompare(a.h.reviewedAt));
+  const courseNames = (snapBatches: { batchId: string }[]) => [...new Set(snapBatches.map((b) => s.courses.find((c) => c.id === s.batches.find((y) => y.id === b.batchId)?.courseId)?.name).filter(Boolean))].join(', ');
+  return (
+    <div>
+      <PageHeader title="Reports Assigned to Me" sub="Consolidated daily reports where a trainer selected you as an Admin Reviewer" />
+      <Card pad={false}>
+        <div className="flex flex-wrap gap-2 border-b border-ink-100 p-3 dark:border-ink-800">
+          <Input id="ar-date" type="date" aria-label="Report date" value={date} onChange={(e) => setDate(e.target.value)} className="!w-auto" />
+          {date && <Button size="sm" variant="ghost" onClick={() => setDate('')}>All dates</Button>}
+          <Select id="ar-trainer" aria-label="Trainer" value={trainer} onChange={(e) => setTrainer(e.target.value)} className="!w-auto"><option value="All">All trainers</option>{s.trainers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</Select>
+          <Select id="ar-batch" aria-label="Batch" value={batch} onChange={(e) => setBatch(e.target.value)} className="!w-auto"><option value="All">All batches</option>{s.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</Select>
+          <Select id="ar-course" aria-label="Course" value={course} onChange={(e) => setCourse(e.target.value)} className="!w-auto"><option value="All">All courses</option>{s.courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+          <Select id="ar-status" aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="!w-auto">
+            <option value="Awaiting">Awaiting my review</option><option value="All">All statuses</option>
+            {['Submitted', 'Under Review', 'Correction Requested', 'Approved', 'Rejected'].map((x) => <option key={x}>{x}</option>)}
+          </Select>
+        </div>
+        <Table head={['Trainer', 'Course', 'Batches', 'Report date', 'Submitted', 'Admin reviewers', 'Review status', '']} minW={1000}
+          empty={!rows.length && <Empty title={mine.length ? 'No assigned reports match these filters' : 'No reports have been assigned to you yet'} body={mine.length ? undefined : 'Reports appear here when a trainer selects you as a reviewer.'} />}>
+          {rows.map(({ r, snap, my, prog }) => (
+            <tr key={r.id} className={my.awaiting ? 'bg-violet-50/40 dark:bg-violet-500/5' : ''}>
+              <td className="whitespace-nowrap font-medium text-ink-900 dark:text-ink-50">{trainerName(s, r.trainerId)}</td>
+              <td className="max-w-[160px] text-xs">{courseNames(snap.batches)}</td>
+              <td className="max-w-[180px] text-xs">{snap.batches.map((b) => b.batchName).join(', ')}</td>
+              <td className="whitespace-nowrap">{fmtDate(r.date)}</td>
+              <td className="whitespace-nowrap text-xs">{fmtDateTime(r.versions.at(-1)!.submittedAt)}{r.versions.length > 1 && <Badge color="purple" dot={false}>v{r.versions.length}</Badge>}</td>
+              <td className="max-w-[200px] text-xs">{versionReviewerIds(r).map((id) => <span key={id} className={cx('mr-1 inline-block', id === me && 'font-semibold text-ink-900 dark:text-ink-50')}>{name(id)}{id === me ? ' (you)' : ''}</span>)}</td>
+              <td className="whitespace-nowrap"><Badge>{r.status}</Badge><div className="mt-0.5 text-[11px] text-ink-500">{prog.approved} of {prog.total} approved · you: {my.mine ? my.mine.action : my.awaiting ? 'pending' : '—'}</div></td>
+              <td className="text-right"><Button size="sm" variant={my.awaiting ? 'primary' : 'secondary'} onClick={() => go({ page: 'report', id: r.id })}>{my.awaiting ? 'Review' : 'Open'}</Button></td>
+            </tr>
+          ))}
+        </Table>
+      </Card>
+      <Card className="mt-4" title="My review history" pad={false}>
+        <Table head={['When', 'Trainer', 'Report date', 'Version', 'My decision', 'Remarks']} minW={720} empty={!myDecisions.length && <Empty title="You have not reviewed any reports yet" />}>
+          {myDecisions.slice(0, 30).map(({ h, r }, i) => (
+            <tr key={i}><td className="whitespace-nowrap text-xs">{fmtDateTime(h.reviewedAt)}</td><td>{trainerName(s, r.trainerId)}</td><td>{fmtDate(r.date)}</td><td>v{h.reportVersion}</td><td><Badge>{h.action}</Badge></td><td className="max-w-sm text-xs">{h.remarks || '—'}</td></tr>
+          ))}
+        </Table>
+      </Card>
+    </div>
+  );
+}
+
 export default function Reports({ approvals = false }: { approvals?: boolean }) {
-  const { state: s, go } = useApp();
+  const { state: s, go, user } = useApp();
   const [date, setDate] = useState(approvals ? '' : todayISO());
   const [trainer, setTrainer] = useState('All');
   const [course, setCourse] = useState('All');
@@ -164,7 +230,7 @@ export default function Reports({ approvals = false }: { approvals?: boolean }) 
   const [sub, setSub] = useState('All');
   const [status, setStatus] = useState(approvals ? 'Awaiting' : 'All');
   const { open, el } = useActionModals();
-  const [drawer, setDrawer] = useState<{ kind: 'att' | 'topics' | 'hours' | 'voice'; tid: string; date: string } | null>(null);
+  const [drawer, setDrawer] = useState<{ kind: 'att' | 'topics' | 'voice'; tid: string; date: string } | null>(null);
 
   // rows: every trainer-day with classes
   const keys = new Map<string, { tid: string; date: string }>();
@@ -268,7 +334,7 @@ export default function Reports({ approvals = false }: { approvals?: boolean }) 
               total = snap.batches.reduce((a, b) => a + b.total, 0);
             const last = r?.versions.at(-1);
             const live = !last;
-            const canDecide = r && ['Submitted', 'Under Review'].includes(r.status);
+            const canDecide = !!r && myReview(r, user?.id).canAct;
             return (
               <tr key={`${tid}${d}`} className="hover:bg-ink-50/60 dark:hover:bg-ink-800/30">
                 <td className="whitespace-nowrap font-medium text-ink-900 dark:text-ink-50">{trainerName(s, tid)}</td>
@@ -306,6 +372,7 @@ export default function Reports({ approvals = false }: { approvals?: boolean }) 
                 </td>
                 <td>
                   <Badge>{st}</Badge>
+                  {r && r.versions.length > 0 && <div className="mt-0.5 text-[11px] text-ink-500">{reviewProgress(r).approved}/{reviewProgress(r).total} approved · {versionReviewerIds(r).map((id) => s.users.find((u) => u.id === id)?.name.split(' ')[0] ?? '?').join(', ')}</div>}
                 </td>
                 <td className="whitespace-nowrap">
                   {last && (
@@ -365,32 +432,17 @@ export function RecordDrawer({
   date,
   onClose,
 }: {
-  kind: 'att' | 'topics' | 'hours' | 'voice';
+  kind: 'att' | 'topics' | 'voice';
   tid: string;
   date: string;
   onClose: () => void;
 }) {
   const { state: s } = useApp();
   const batches = classBatchesOn(s, tid, date);
-  const title = { att: 'Attendance', topics: 'Topic progress', hours: 'Working hours', voice: 'Student Voice Notes' }[kind];
+  const title = { att: 'Attendance', topics: 'Topic progress', voice: 'Student Voice Notes' }[kind];
 
   return (
     <Modal open onClose={onClose} size="lg" title={`${title} · ${trainerName(s, tid)}`} sub={fmtDate(date)}>
-      {kind === 'hours' && (
-        <Table head={['Activity', 'Time', 'Duration', 'Batch', 'Description']} minW={560}>
-          {workFor(s, tid, date).map((w) => (
-            <tr key={w.id}>
-              <td>{w.activity}</td>
-              <td className="tabular-nums">
-                {w.start}–{w.end}
-              </td>
-              <td className="tabular-nums">{minutesBetween(w.start, w.end)} min</td>
-              <td>{s.batches.find((b) => b.id === w.batchId)?.name ?? '—'}</td>
-              <td>{w.description}</td>
-            </tr>
-          ))}
-        </Table>
-      )}
       {kind === 'voice' &&
         (batches.length ? (
           batches.map((b) => {
@@ -406,9 +458,9 @@ export function RecordDrawer({
                         <li key={id} className="flex items-center justify-between">
                           <span>
                             • {s.students.find((x) => x.id === id)?.name ?? id}
-                            <span className="text-ink-500"> – {vItem?.title || 'Doubt clarification'}</span>
+                            {vItem?.title && <span className="text-ink-500"> – {vItem.title}</span>}
                           </span>
-                          <span className="text-xs text-ink-400">{fmtDate(vItem?.submittedAt || w.savedAt || date)}</span>
+                          <span className="text-xs text-ink-400">{fmtDate((vItem?.submittedAt || w.savedAt || date).slice(0, 10))}</span>
                         </li>
                       );
                     })}
@@ -473,695 +525,187 @@ export function RecordDrawer({
   );
 }
 
-/**
- * Admin Daily Report Review Page – Final Version
- * Clean, simple, and professional single-column layout without redundant cards or side panels.
- */
+const STATUS_COLOR: Record<string, 'green' | 'red' | 'orange' | 'blue' | 'purple' | 'grey'> = {
+  Approved: 'green', Rejected: 'red', 'Correction Requested': 'orange', 'Under Review': 'purple', Submitted: 'blue', Draft: 'grey',
+};
+/** milestone events shown in the compact history; drafts and remarks are left out (remarks have their own list) */
+const HISTORY_STEPS: { match: (a: string) => boolean; label: string; dot: string }[] = [
+  { match: (a) => a.startsWith('Resubmitted'), label: 'Resubmitted', dot: 'bg-violet-500' },
+  { match: (a) => a.startsWith('Submitted'), label: 'Submitted', dot: 'bg-royal-500' },
+  { match: (a) => a === 'Opened for review', label: 'Opened for Review', dot: 'bg-sky-500' },
+  { match: (a) => a === 'Correction requested', label: 'Correction Requested', dot: 'bg-amber-500' },
+  { match: (a) => a.startsWith('Approved'), label: 'Approved', dot: 'bg-emerald-500' },
+  { match: (a) => a === 'Rejected', label: 'Rejected', dot: 'bg-red-500' },
+];
+
+/** Admin Daily Report Review: one column, built from the saved, versioned report snapshot. */
 export function ReportDetail({ id }: { id: string }) {
   const { state: s, user, go } = useApp();
   const act = useReportActions();
   const r = s.reports.find((x) => x.id === id);
   const [ver, setVer] = useState<number>(r?.versions.length ?? 1);
   const [exp, setExp] = useState(false);
-  const [selectedBatchId, setSelectedBatchId] = useState<string>('all');
-  const [inlineRemark, setInlineRemark] = useState('');
+  const [only, setOnly] = useState<string>('all');
+  const [remark, setRemark] = useState('');
   const { open, el } = useActionModals();
 
-  // Enforce Admin review permissions
-  const canReview = user?.role === 'admin' && user.canReview !== false;
-  const canDecide = canReview && !!r && ['Submitted', 'Under Review'].includes(r.status);
+  // only admins the trainer selected for the latest version can review; others can read the report
+  const mineState = r ? myReview(r, user?.id) : undefined;
+  const canReview = !!mineState?.assigned;
+  const canDecide = !!mineState?.canAct;
 
-  useEffect(() => {
-    if (r?.status === 'Submitted' && user?.role === 'admin') {
-      act.openForReview(r.id);
-    }
-  }, [r?.id, r?.status, user?.role]);
-
-  useEffect(() => {
-    if (r) setVer(r.versions.length);
-  }, [r?.versions.length]);
+  // opening a submitted report moves it to "Under Review" and records it in the history
+  useEffect(() => { if (r?.status === 'Submitted' && canReview) act.openForReview(r.id); }, [r?.id, r?.status, canReview]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (r) setVer(r.versions.length); }, [r?.versions.length]);
 
   if (!r || !r.versions.length) {
-    return (
-      <Card>
-        <Empty
-          title="Report not found or not submitted yet"
-          action={<Button onClick={() => go('reports')}>Back to reports</Button>}
-        />
-      </Card>
-    );
+    return <Card><Empty title="Report not found or not submitted yet" action={<Button onClick={() => go('reports')}>Back to reports</Button>} /></Card>;
   }
 
   const v = r.versions[ver - 1] ?? r.versions.at(-1)!;
   const snap = v.snapshot;
+  const latest = v.version === r.versions.length;
+  const totalAttended = snap.batches.reduce((n, b) => n + b.present + b.late, 0);
+  const totalCompleted = snap.batches.reduce((n, b) => n + b.completed.length, 0);
+  const totalPending = snap.batches.reduce((n, b) => n + b.partial.length + b.pending.length, 0);
+  const shown = only === 'all' ? snap.batches : snap.batches.filter((b) => b.batchId === only);
+  const history = r.events.map((e) => ({ e, step: HISTORY_STEPS.find((h) => h.match(e.action)) })).filter((x) => x.step);
+  const text = remark.trim();
 
-  // 2. Daily Summary calculations from actual submitted batch reports
-  const totalBatches = snap.batches.length;
-  const totalAttended = snap.batches.reduce((sum, b) => sum + b.present + b.late, 0);
-  const totalCompleted = snap.batches.reduce((sum, b) => sum + b.completed.length, 0);
-  const totalPending = snap.batches.reduce((sum, b) => sum + b.partial.length + b.pending.length, 0);
-
-  const shownBatches = selectedBatchId === 'all' ? snap.batches : snap.batches.filter((b) => b.batchId === selectedBatchId);
-
-  const handleInlineAddRemark = () => {
-    if (!inlineRemark.trim()) return;
-    act.addRemark(r.id, inlineRemark.trim());
-    setInlineRemark('');
+  const saveRemark = () => { if (text && act.addRemark(r.id, text) !== false) setRemark(''); };
+  const decide = (kind: 'approve' | 'correction' | 'reject') => {
+    // the remarks box doubles as the note / mandatory reason; without text, correction and reject ask for one
+    if (kind === 'approve') { act.approve(r.id, text); setRemark(''); return; }
+    if (!text) { open(kind, r.id); return; }
+    const ok = kind === 'correction' ? act.requestCorrection(r.id, text) : act.reject(r.id, text);
+    if (ok !== false) setRemark('');
   };
+  const focusRemarks = () => { const t = document.getElementById('admin-review-remark'); t?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => t?.focus(), 250); };
+
+  const Actions = ({ compact }: { compact?: boolean }) => (
+    <div className="flex flex-wrap items-center gap-2">
+      {compact && <Button size="sm" variant="secondary" icon={<Download size={15} />} onClick={() => setExp(true)}>Export PDF</Button>}
+      {compact && canReview && <Button size="sm" variant="secondary" icon={<MessageSquarePlus size={15} />} onClick={focusRemarks}>Add Remarks</Button>}
+      {canDecide && latest && <>
+        <Button size="sm" variant="success" icon={<CheckCircle2 size={15} />} onClick={() => decide('approve')}>Approve</Button>
+        <Button size="sm" variant="accent" icon={<RotateCcw size={15} />} onClick={() => decide('correction')}>Request Correction</Button>
+        <Button size="sm" variant="danger" icon={<XCircle size={15} />} onClick={() => decide('reject')}>Reject</Button>
+      </>}
+    </div>
+  );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-12">
-      {/* 1. Report Header */}
-      <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm dark:border-ink-800 dark:bg-ink-900">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink-100 pb-4 dark:border-ink-800">
-          <div>
-            <div className="mb-1 flex items-center gap-2">
-              <Button size="sm" variant="ghost" icon={<ArrowLeft size={15} />} onClick={() => go('reports')}>
-                Back to reports
-              </Button>
-            </div>
-            <h1 className="font-display text-2xl font-bold text-ink-900 dark:text-ink-50">
-              {trainerName(s, r.trainerId)}
-            </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2.5 text-xs text-ink-600 dark:text-ink-300">
-              <span>Report Date: <strong className="text-ink-900 dark:text-ink-100">{fmtDate(r.date)}</strong></span>
-              <span>·</span>
-              <span>
-                Report Status: <Badge color={r.status === 'Approved' ? 'green' : r.status === 'Rejected' ? 'red' : r.status === 'Correction Requested' ? 'orange' : 'blue'}>{r.status}</Badge>
-              </span>
-              <span>·</span>
-              <span>Submission Date: <strong className="text-ink-900 dark:text-ink-100">{fmtDateTime(v.submittedAt)}</strong></span>
-              {v.late && <Badge color="red" dot={false}>Late Submission</Badge>}
-            </div>
+    <div className="mx-auto max-w-5xl space-y-5 pb-12">
+      {/* 1. Report header */}
+      <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm sm:p-5 dark:border-ink-800 dark:bg-ink-900">
+        <button onClick={() => go('reports')} className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-ink-500 hover:text-ink-800 dark:hover:text-ink-200"><ArrowLeft size={14} /> Back to reports</button>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-bold text-ink-900 sm:text-2xl dark:text-ink-50">{trainerName(s, r.trainerId)}</h1>
+            <div className="mt-0.5 text-sm text-ink-500">Daily report · {fmtDate(r.date)}</div>
           </div>
-
-          {/* Admin Header Actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" icon={<Download size={15} />} onClick={() => setExp(true)}>
-              Export PDF
-            </Button>
-            <Button variant="secondary" icon={<MessageSquarePlus size={15} />} onClick={() => open('remark', r.id)}>
-              Add Remarks
-            </Button>
-            {canDecide && (
-              <>
-                <Button variant="danger" icon={<XCircle size={15} />} onClick={() => open('reject', r.id)}>
-                  Reject
-                </Button>
-                <Button variant="accent" icon={<RotateCcw size={15} />} onClick={() => open('correction', r.id)}>
-                  Request Correction
-                </Button>
-                <Button variant="success" icon={<CheckCircle2 size={15} />} onClick={() => open('approve', r.id)}>
-                  Approve
-                </Button>
-              </>
-            )}
-          </div>
+          <Badge color={STATUS_COLOR[r.status] ?? 'blue'}>{r.status}</Badge>
         </div>
-
-        {/* Report Version switcher if multiple versions exist */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-ink-700 dark:text-ink-300">Report Version:</span>
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+          <div><dt className="text-xs text-ink-500">Report Date</dt><dd className="font-medium text-ink-900 dark:text-ink-100">{fmtDate(r.date)}</dd></div>
+          <div><dt className="text-xs text-ink-500">Report Status</dt><dd className="font-medium text-ink-900 dark:text-ink-100">{r.status}</dd></div>
+          <div><dt className="text-xs text-ink-500">Submission Date</dt><dd className="font-medium text-ink-900 dark:text-ink-100">{fmtDateTime(v.submittedAt)}{v.late && <span className="ml-1 text-xs text-red-600">(late)</span>}</dd></div>
+          <div><dt className="text-xs text-ink-500">Report Version</dt><dd>
             {r.versions.length > 1 ? (
-              <Select
-                id="rd-ver"
-                value={ver}
-                onChange={(e) => setVer(Number(e.target.value))}
-                className="!h-8 !py-0 !text-xs font-medium"
-              >
-                {r.versions.map((x) => (
-                  <option key={x.version} value={x.version}>
-                    Version {x.version} {x.version === r.versions.length ? '(Latest)' : ''} — submitted {fmtDateTime(x.submittedAt)}
-                  </option>
-                ))}
+              <Select id="rd-ver" aria-label="Report version" value={ver} onChange={(e) => setVer(Number(e.target.value))} className="!h-8 !py-0 !text-sm">
+                {r.versions.map((x) => <option key={x.version} value={x.version}>Version {x.version}{x.version === r.versions.length ? ' (latest)' : ''}</option>)}
               </Select>
-            ) : (
-              <span className="rounded bg-ink-100 px-2 py-0.5 font-medium text-ink-800 dark:bg-ink-800 dark:text-ink-200">
-                Version 1 (Initial Submission)
-              </span>
-            )}
-          </div>
-          {r.versions.length > 1 && (
-            <span className="text-ink-500">
-              Preserving all {r.versions.length} versions · History is never overwritten
-            </span>
-          )}
-        </div>
+            ) : <span className="font-medium text-ink-900 dark:text-ink-100">Version 1</span>}
+          </dd></div>
+        </dl>
+        {!latest && <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">You are viewing version {v.version}, an earlier submission kept unchanged. Decisions apply to the latest version.</div>}
+        <div className="mt-4 border-t border-ink-100 pt-3 dark:border-ink-800"><Actions compact /></div>
       </div>
 
-      {/* 2. Daily Summary: Display ONLY Number of Batches, Total Students Attended, Topics Completed, Topics Pending */}
-      <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm dark:border-ink-800 dark:bg-ink-900">
-        <div className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-          Daily Summary
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3.5 text-center dark:border-ink-800 dark:bg-ink-950/40">
-            <div className="text-xs font-medium text-ink-500">Number of Batches</div>
-            <div className="mt-1 font-display text-2xl font-bold text-ink-900 dark:text-ink-50">{totalBatches}</div>
+      {/* 2. Daily summary (from this version's batch reports) */}
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-sm sm:grid-cols-4 dark:border-ink-800 dark:bg-ink-900">
+        {([['Number of Batches', snap.batches.length, 'text-ink-900 dark:text-ink-50'], ['Total Students Attended', totalAttended, 'text-emerald-700 dark:text-emerald-400'], ['Topics Completed', totalCompleted, 'text-teal-700 dark:text-teal-400'], ['Topics Pending', totalPending, 'text-amber-700 dark:text-amber-400']] as const).map(([l, n, c], i) => (
+          <div key={l} className={cx('p-4', i % 2 === 1 && 'border-l border-ink-100 dark:border-ink-800', i >= 2 && 'border-t border-ink-100 sm:border-t-0 dark:border-ink-800', i === 2 && 'sm:border-l')}>
+            <div className="text-xs text-ink-500">{l}</div>
+            <div className={cx('mt-0.5 font-display text-2xl font-bold tabular-nums', c)}>{n}</div>
           </div>
-          <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3.5 text-center dark:border-ink-800 dark:bg-ink-950/40">
-            <div className="text-xs font-medium text-ink-500">Total Students Attended</div>
-            <div className="mt-1 font-display text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalAttended}</div>
-          </div>
-          <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3.5 text-center dark:border-ink-800 dark:bg-ink-950/40">
-            <div className="text-xs font-medium text-ink-500">Topics Completed</div>
-            <div className="mt-1 font-display text-2xl font-bold text-teal-600 dark:text-teal-400">{totalCompleted}</div>
-          </div>
-          <div className="rounded-lg border border-ink-100 bg-ink-50/60 p-3.5 text-center dark:border-ink-800 dark:bg-ink-950/40">
-            <div className="text-xs font-medium text-ink-500">Topics Pending</div>
-            <div className="mt-1 font-display text-2xl font-bold text-amber-600 dark:text-amber-400">{totalPending}</div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* 3. Batch-wise Reports */}
+      {/* 3. Batch-wise reports */}
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-            Batch-wise Reports ({snap.batches.length})
-          </div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">Batch-wise Reports ({snap.batches.length})</h2>
           {snap.batches.length > 1 && (
-            <div className="inline-flex rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">
-              {[{ id: 'all', label: 'All Batches' }, ...snap.batches.map((b) => ({ id: b.batchId, label: b.batchName }))].map((o) => (
-                <button
-                  key={o.id}
-                  onClick={() => setSelectedBatchId(o.id)}
-                  className={cx(
-                    'rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                    selectedBatchId === o.id
-                      ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white'
-                      : 'text-ink-600 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100'
-                  )}
-                >
-                  {o.label}
-                </button>
+            <div className="inline-flex flex-wrap rounded-lg bg-ink-100 p-0.5 dark:bg-ink-800">
+              {[{ id: 'all', label: 'All batches' }, ...snap.batches.map((b) => ({ id: b.batchId, label: b.batchName }))].map((o) => (
+                <button key={o.id} onClick={() => setOnly(o.id)} className={cx('rounded-md px-3 py-1 text-xs font-medium', only === o.id ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-700 dark:text-white' : 'text-ink-600 hover:text-ink-900 dark:text-ink-400')}>{o.label}</button>
               ))}
             </div>
           )}
         </div>
-
-        {shownBatches.map((b) => {
-          const voiceNotes = getStudentVoiceNotes(b, r.date);
-          return (
-            <div
-              key={b.batchId}
-              className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm dark:border-ink-800 dark:bg-ink-900"
-            >
-              {/* 3.A Batch Details */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 pb-3 dark:border-ink-800">
-                <div>
-                  <h2 className="font-display text-lg font-bold text-ink-900 dark:text-ink-50">{b.batchName}</h2>
-                  <div className="mt-0.5 text-xs text-ink-600 dark:text-ink-300">
-                    <span className="font-semibold text-ink-800 dark:text-ink-100">Course:</span> {b.course} ·{' '}
-                    <span className="font-semibold text-ink-800 dark:text-ink-100">Class Date:</span> {fmtDate(b.classDate || r.date)} ·{' '}
-                    <span className="font-semibold text-ink-800 dark:text-ink-100">Class Time:</span> {b.timing}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge color="green" dot={false}>
-                    {b.completed.length} Completed
-                  </Badge>
-                  {b.partial.length > 0 && (
-                    <Badge color="orange" dot={false}>
-                      {b.partial.length} Partially Completed
-                    </Badge>
-                  )}
-                  {b.pending.length > 0 && (
-                    <Badge color="red" dot={false}>
-                      {b.pending.length} Not Covered
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-5">
-                {/* 3.B Topic Progress */}
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                    Topic Progress
-                  </div>
-                  <div className="mt-2 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-3 dark:border-ink-800 dark:bg-ink-950/40">
-                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 size={14} className="shrink-0" />
-                        Completed ({b.completed.length})
-                      </div>
-                      {b.completed.length === 0 ? (
-                        <div className="text-xs italic text-ink-400">No topics marked completed</div>
-                      ) : (
-                        <ul className="space-y-1.5 text-sm">
-                          {b.completed.map((t) => (
-                            <li key={t} className="flex items-start gap-1.5 text-ink-800 dark:text-ink-100">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                              <span>{t}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-3 dark:border-ink-800 dark:bg-ink-950/40">
-                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                        <CircleDot size={14} className="shrink-0" />
-                        Partially Completed ({b.partial.length})
-                      </div>
-                      {b.partial.length === 0 ? (
-                        <div className="text-xs italic text-ink-400">None recorded</div>
-                      ) : (
-                        <ul className="space-y-1.5 text-sm">
-                          {b.partial.map((p, idx) => (
-                            <li key={idx} className="flex items-start gap-1.5 text-ink-800 dark:text-ink-100">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-                              <div>
-                                <span className="font-medium">{p.title}</span>
-                                {p.day && <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">({p.day})</span>}
-                                {p.note && <div className="text-xs text-ink-500">{p.note}</div>}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-3 dark:border-ink-800 dark:bg-ink-950/40">
-                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
-                        <CircleDashed size={14} className="shrink-0" />
-                        Not Covered / Pending ({b.pending.length})
-                      </div>
-                      {b.pending.length === 0 ? (
-                        <div className="text-xs italic text-ink-400">None recorded</div>
-                      ) : (
-                        <ul className="space-y-1.5 text-sm">
-                          {b.pending.map((p, idx) => (
-                            <li key={idx} className="flex items-start gap-1.5 text-ink-800 dark:text-ink-100">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-                              <div>
-                                <span className="font-medium">{p.title}</span>
-                                {p.day && <span className="ml-1 text-xs text-rose-700 dark:text-rose-400">({p.day})</span>}
-                                {p.note && <div className="text-xs text-ink-500">{p.note}</div>}
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3.C Attendance */}
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                    Attendance
-                  </div>
-                  <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-ink-50 p-3 sm:grid-cols-5 dark:bg-ink-800/40">
-                    <div>
-                      <div className="text-[11px] text-ink-500">Total Students</div>
-                      <div className="font-display text-lg font-bold text-ink-900 dark:text-ink-50">{b.total}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400">Present</div>
-                      <div className="font-display text-lg font-bold text-emerald-700 dark:text-emerald-300">{b.present}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-rose-600 dark:text-rose-400">Absent</div>
-                      <div className="font-display text-lg font-bold text-rose-700 dark:text-rose-300">{b.absent}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-amber-600 dark:text-amber-400">Leave</div>
-                      <div className="font-display text-lg font-bold text-amber-700 dark:text-amber-300">{b.leave}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-royal-600 dark:text-royal-400">Late</div>
-                      <div className="font-display text-lg font-bold text-royal-700 dark:text-royal-300">{b.late}</div>
-                    </div>
-                  </div>
-
-                  {(b.absentees?.length || b.onLeave?.length || b.lateList?.length) ? (
-                    <div className="mt-3 grid gap-3 text-xs md:grid-cols-3">
-                      <div className="rounded border border-ink-100 p-2.5 dark:border-ink-800">
-                        <span className="font-semibold text-rose-700 dark:text-rose-400">Absent students & reasons:</span>
-                        {b.absentees?.length ? (
-                          <ul className="mt-1 space-y-1">
-                            {b.absentees.map((x) => (
-                              <li key={x.name}>
-                                <span className="font-medium text-ink-900 dark:text-ink-100">{x.name}</span> — {x.reason || 'No reason provided'}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="mt-0.5 text-ink-400">None</div>
-                        )}
-                      </div>
-                      <div className="rounded border border-ink-100 p-2.5 dark:border-ink-800">
-                        <span className="font-semibold text-amber-700 dark:text-amber-400">On leave & reasons:</span>
-                        {b.onLeave?.length ? (
-                          <ul className="mt-1 space-y-1">
-                            {b.onLeave.map((x) => (
-                              <li key={x.name}>
-                                <span className="font-medium text-ink-900 dark:text-ink-100">{x.name}</span> — {x.reason || 'No reason provided'}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="mt-0.5 text-ink-400">None</div>
-                        )}
-                      </div>
-                      <div className="rounded border border-ink-100 p-2.5 dark:border-ink-800">
-                        <span className="font-semibold text-royal-700 dark:text-royal-400">Late arrivals:</span>
-                        {b.lateList?.length ? (
-                          <ul className="mt-1 space-y-1">
-                            {b.lateList.map((x) => (
-                              <li key={x.name}>
-                                <span className="font-medium text-ink-900 dark:text-ink-100">{x.name}</span> — arrived {x.time || '—'}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div className="mt-0.5 text-ink-400">None</div>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* 3.D Practical Activities & 3.E Homework / Assignments */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                    <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                      Practical Activities
-                    </div>
-                    <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
-                      {b.practicalList && b.practicalList.length > 0 ? (
-                        <ul className="list-disc space-y-1 pl-4">
-                          {b.practicalList.map((p) => (
-                            <li key={p.id}>
-                              <span className="text-xs font-semibold text-ink-500">{p.type}:</span> {p.text}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : b.practicals ? (
-                        <p>{b.practicals}</p>
-                      ) : (
-                        <div className="text-xs italic text-ink-400">No practical activities conducted</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                    <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                      Homework / Assignments
-                    </div>
-                    <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
-                      {b.assignmentList && b.assignmentList.length > 0 ? (
-                        <ul className="space-y-1.5">
-                          {b.assignmentList.map((a) => (
-                            <li key={a.id} className="border-b border-ink-100/60 pb-1.5 last:border-0 dark:border-ink-800/60">
-                              <div className="font-medium text-ink-900 dark:text-ink-50">
-                                {a.name}
-                                {a.deadline && (
-                                  <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">
-                                    (Due: {fmtDate(a.deadline)})
-                                  </span>
-                                )}
-                              </div>
-                              {a.description && <div className="text-xs text-ink-600 dark:text-ink-300">{a.description}</div>}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : b.homework ? (
-                        <p>{b.homework}</p>
-                      ) : (
-                        <div className="text-xs italic text-ink-400">No homework or assignments given</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3.F Student Difficulties & 3.G Student Voice Notes */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                    <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                      Student Difficulties
-                    </div>
-                    <div className="mt-2 text-sm text-ink-800 dark:text-ink-100">
-                      {b.doubtList && b.doubtList.length > 0 ? (
-                        <ul className="list-disc space-y-1 pl-4">
-                          {b.doubtList.map((d) => (
-                            <li key={d.id}>
-                              <span className="text-xs font-semibold text-ink-500">{d.type}:</span> {d.text}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : b.doubts ? (
-                        <p>{b.doubts}</p>
-                      ) : (
-                        <div className="text-xs italic text-ink-400">No student difficulties recorded</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                    <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                      Student Voice Notes – {b.batchName}
-                    </div>
-                    <div className="mt-2">
-                      {voiceNotes.length > 0 ? (
-                        <ul className="space-y-1.5 text-sm">
-                          {voiceNotes.map((vn, i) => (
-                            <li
-                              key={i}
-                              className="flex flex-wrap items-center justify-between gap-1 border-b border-ink-100/60 pb-1 last:border-0 dark:border-ink-800/60"
-                            >
-                              <span className="font-medium text-ink-900 dark:text-ink-50">
-                                • {vn.studentName} <span className="font-normal text-ink-600 dark:text-ink-300">– {vn.title}</span>
-                              </span>
-                              <span className="text-[11px] text-ink-400">
-                                Submitted: {fmtDate(vn.submittedAt || vn.date || r.date)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="text-xs italic text-ink-400">No student voice notes submitted</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3.H Project Updates */}
-                <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                    Project Updates
-                  </div>
-                  <div className="mt-2">
-                    {b.projects && b.projects.length > 0 ? (
-                      <div className="space-y-2">
-                        {b.projects.map((p) => (
-                          <div
-                            key={p.id}
-                            className="rounded-lg border border-ink-100 bg-ink-50/40 p-3 dark:border-ink-800 dark:bg-ink-950/30"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-semibold text-ink-900 dark:text-ink-50">{p.name}</span>
-                              <Badge color={p.status === 'Completed' ? 'green' : p.status === 'In Progress' ? 'blue' : 'grey'}>
-                                {p.status}
-                              </Badge>
-                            </div>
-                            <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-                              <div>
-                                <dt className="inline font-medium text-ink-500">Work Completed Today: </dt>
-                                <dd className="inline text-ink-800 dark:text-ink-100">{p.workDone || '—'}</dd>
-                              </div>
-                              <div>
-                                <dt className="inline font-medium text-ink-500">New Project / Assignment Assigned: </dt>
-                                <dd className="inline text-ink-800 dark:text-ink-100">{p.assigned || '—'}</dd>
-                              </div>
-                              <div>
-                                <dt className="inline font-medium text-ink-500">Students Assigned: </dt>
-                                <dd className="inline text-ink-800 dark:text-ink-100">{p.students || '—'}</dd>
-                              </div>
-                              {p.remarks && (
-                                <div>
-                                  <dt className="inline font-medium text-ink-500">Remarks: </dt>
-                                  <dd className="inline text-ink-800 dark:text-ink-100">{p.remarks}</dd>
-                                </div>
-                              )}
-                            </dl>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs italic text-ink-400">No project updates</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* 3.I Next Class Plan */}
-                <div className="rounded-lg border border-ink-100 p-3.5 dark:border-ink-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-ink-300">
-                    Next Class Plan
-                  </div>
-                  <div className="mt-2 space-y-1 text-sm text-ink-800 dark:text-ink-100">
-                    <div>
-                      <span className="font-medium text-ink-600 dark:text-ink-300">Plan: </span>
-                      {b.nextPlan || 'Continue with next scheduled syllabus topic'}
-                    </div>
-                    {b.batchRemarks && (
-                      <div className="mt-1 border-t border-ink-100 pt-1 text-xs text-ink-600 dark:border-ink-800 dark:text-ink-300">
-                        <span className="font-semibold text-ink-700 dark:text-ink-200">Additional trainer remarks: </span>
-                        {b.batchRemarks}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {shown.length ? shown.map((b) => <BatchBlock key={b.batchId} b={b} reportDate={r.date} />) : <Card><Empty title="No batches in this report" /></Card>}
+        {snap.remarks && <div className="rounded-xl border border-ink-200 bg-white p-4 text-sm dark:border-ink-800 dark:bg-ink-900"><span className="font-semibold text-ink-700 dark:text-ink-200">Trainer's overall remarks: </span>{snap.remarks}</div>}
       </div>
 
-      {/* 4. Admin Remarks and Review Section */}
-      <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm dark:border-ink-800 dark:bg-ink-900">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 pb-3 dark:border-ink-800">
-          <div>
-            <div className="font-display text-base font-bold text-ink-900 dark:text-ink-50">
-              Admin Remarks & Review Decision
+      {/* 4. Admin remarks and review */}
+      <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm sm:p-5 dark:border-ink-800 dark:bg-ink-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-base font-bold text-ink-900 dark:text-ink-50">Admin Remarks and Review</h2>
+          <span className="flex items-center gap-2 text-xs text-ink-500">Current status <Badge color={STATUS_COLOR[r.status] ?? 'blue'}>{r.status}</Badge></span>
+        </div>
+        {r.adminRemarks.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {r.adminRemarks.map((m, i) => (
+              <li key={i} className="rounded-lg bg-ink-50 px-3 py-2 text-sm dark:bg-ink-800/50">
+                <div className="text-ink-900 dark:text-ink-50">{m.text}</div>
+                <div className="mt-0.5 text-xs text-ink-500">{m.by} · {fmtDateTime(m.at)}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {r.versions.length > 0 && (
+          <div id="review-progress" className="mt-3 rounded-lg border border-ink-100 p-3 dark:border-ink-800">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-semibold text-ink-900 dark:text-ink-50">{reviewProgress(r).label}</span><span className="text-xs text-ink-500">{reviewProgress(r).total > 1 ? 'Approved only when every selected reviewer approves' : 'Single reviewer'}</span></div>
+            <ReviewerStatusList s={s} r={r} />
+          </div>
+        )}
+        {canReview && mineState?.mine && <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">You recorded “{mineState.mine.action}” for version {mineState.mine.reportVersion} on {fmtDateTime(mineState.mine.reviewedAt)}.{r.status === 'Under Review' && ' Waiting for the other selected reviewers.'}</p>}
+        {canReview ? (
+          <>
+            <div className="mt-3">
+              <Field label="Remarks">
+                <Textarea id="admin-review-remark" rows={3} value={remark} onChange={(e) => setRemark(e.target.value)}
+                  placeholder={canDecide ? 'Write remarks for the trainer. This text is also used as the reason when you request a correction or reject.' : 'Add a remark for the trainer'} />
+              </Field>
+              {canDecide && latest && <p className="mt-1 text-[11.5px] text-ink-500">A reason is required to request a correction or reject. Approve works with or without remarks.</p>}
             </div>
-            <div className="text-xs text-ink-500">
-              Provide your review remarks and take action on this report.
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <Button size="sm" variant="secondary" disabled={!text} onClick={saveRemark}>Save Remarks</Button>
+              {canDecide && latest ? <Actions /> : <span className="text-xs text-ink-500">{r.status === 'Approved' ? 'This report is approved.' : r.status === 'Rejected' ? 'This report was rejected.' : r.status === 'Correction Requested' ? 'Waiting for the trainer to correct and resubmit.' : !latest ? 'Switch to the latest version to take a decision.' : mineState?.mine ? 'Your decision on this version is recorded.' : ''}</span>}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-ink-600 dark:text-ink-300">Current Status:</span>
-            <Badge color={r.status === 'Approved' ? 'green' : r.status === 'Rejected' ? 'red' : r.status === 'Correction Requested' ? 'orange' : 'blue'}>
-              {r.status}
-            </Badge>
-          </div>
-        </div>
-
-        {/* Existing Admin Remarks */}
-        <div className="mt-4">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-            Previous Remarks ({r.adminRemarks.length})
-          </div>
-          {r.adminRemarks.length > 0 ? (
-            <ul className="mt-2 space-y-2">
-              {r.adminRemarks.map((m, i) => (
-                <li key={i} className="rounded-lg bg-ink-50 px-3.5 py-2.5 text-sm dark:bg-ink-800/50">
-                  <div className="text-ink-900 dark:text-ink-50">{m.text}</div>
-                  <div className="mt-1 text-xs text-ink-500">
-                    By <span className="font-medium text-ink-700 dark:text-ink-300">{m.by}</span> · {fmtDateTime(m.at)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="mt-1 text-xs italic text-ink-400">No remarks added yet.</div>
-          )}
-        </div>
-
-        {/* Remarks Input Area */}
-        <div className="mt-4">
-          <Field label="Add Review Remark">
-            <Textarea
-              id="admin-review-remark"
-              rows={3}
-              value={inlineRemark}
-              onChange={(e) => setInlineRemark(e.target.value)}
-              placeholder="Enter remarks, observations, or instructions for the trainer..."
-            />
-          </Field>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!inlineRemark.trim()}
-              onClick={handleInlineAddRemark}
-            >
-              Save Remark Only
-            </Button>
-
-            {canDecide ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="danger"
-                  icon={<XCircle size={15} />}
-                  onClick={() => open('reject', r.id)}
-                >
-                  Reject Report
-                </Button>
-                <Button
-                  variant="accent"
-                  icon={<RotateCcw size={15} />}
-                  onClick={() => open('correction', r.id)}
-                >
-                  Request Correction
-                </Button>
-                <Button
-                  variant="success"
-                  icon={<CheckCircle2 size={15} />}
-                  onClick={() => {
-                    if (inlineRemark.trim()) {
-                      act.approve(r.id, inlineRemark.trim());
-                      setInlineRemark('');
-                    } else {
-                      open('approve', r.id);
-                    }
-                  }}
-                >
-                  Approve Report
-                </Button>
-              </div>
-            ) : (
-              <span className="text-xs text-ink-400">
-                {r.status === 'Approved'
-                  ? 'This report is approved and locked.'
-                  : r.status === 'Rejected'
-                  ? 'This report is rejected and closed.'
-                  : 'Review decision completed.'}
-              </span>
-            )}
-          </div>
-        </div>
+          </>
+        ) : <p id="not-reviewer" className="mt-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-600 dark:bg-ink-800/50 dark:text-ink-300">You are not a selected reviewer for this report, so you can view it but not review it. Selected reviewers: {versionReviewerIds(r).map((id) => s.users.find((u) => u.id === id)?.name ?? 'Former admin').join(', ')}.</p>}
       </div>
 
-      {/* 5. Report History */}
-      <div className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm dark:border-ink-800 dark:bg-ink-900">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-            Report Version History ({r.events.length} Events · {r.versions.length} Version{r.versions.length === 1 ? '' : 's'})
-          </div>
-          <span className="text-xs text-ink-400">Chronological submission audit</span>
+      {/* 5. Report history (compact) */}
+      <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm sm:p-5 dark:border-ink-800 dark:bg-ink-900">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-display text-base font-bold text-ink-900 dark:text-ink-50">Report History</h2>
+          <span className="text-xs text-ink-500">{r.versions.length} version{r.versions.length === 1 ? '' : 's'} kept · earlier versions are never overwritten</span>
         </div>
-        <ol className="relative space-y-4 border-l border-ink-200 pl-4 dark:border-ink-700">
-          {[...r.events].reverse().map((e, i) => (
-            <li key={i} className="relative">
-              <span
-                className={cx(
-                  'absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-ink-900',
-                  /Approved/.test(e.action)
-                    ? 'bg-emerald-500'
-                    : /Reject/.test(e.action)
-                    ? 'bg-red-500'
-                    : /Correction/.test(e.action)
-                    ? 'bg-amber-500'
-                    : /Resubmitted/.test(e.action)
-                    ? 'bg-purple-500'
-                    : 'bg-royal-500'
-                )}
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold text-ink-900 dark:text-ink-100">{e.action}</span>
-                <span className="text-xs text-ink-400">by {e.by}</span>
-                <span className="text-xs text-ink-400">· {fmtDateTime(e.at)}</span>
-              </div>
-              {e.reason && (
-                <div className="mt-1 rounded bg-ink-50 px-2.5 py-1 text-xs text-ink-700 dark:bg-ink-800/60 dark:text-ink-300">
-                  <span className="font-medium text-ink-900 dark:text-ink-100">Note / Reason: </span>
-                  {e.reason}
+        <ol className="mt-3 space-y-2.5">
+          {history.map(({ e, step }, i) => (
+            <li key={i} className="flex gap-3 text-sm">
+              <span className={cx('mt-1.5 h-2 w-2 shrink-0 rounded-full', step!.dot)} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-medium text-ink-900 dark:text-ink-100">{step!.label === 'Approved' ? e.action : step!.label}</span>
+                  <span className="text-xs text-ink-500">{e.by} · {fmtDateTime(e.at)}</span>
+                  {/v\d+|version \d+/i.test(e.action) && <span className="text-xs text-ink-400">{e.action.replace(/^(Resubmitted|Submitted)\s*/, '')}</span>}
                 </div>
-              )}
+                {e.reason && <div className="mt-0.5 text-xs text-ink-600 dark:text-ink-300">{e.reason}</div>}
+              </div>
             </li>
           ))}
         </ol>

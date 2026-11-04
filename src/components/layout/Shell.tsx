@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Bell, CheckCircle2, ChevronDown, Info, LogOut, Menu, Moon, RotateCcw, Sun, TriangleAlert, X, XCircle, Repeat } from 'lucide-react';
 import { useApp } from '../../store/AppStore';
+import { myReview } from '../../store/reviews';
 import { ACTIVE_PARENT, navFor } from './nav';
 import { Avatar, Button, Confirm } from '../common/ui';
 import { cx, fmtDateTime, fmtDay, todayISO } from '../../utils';
@@ -32,7 +33,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const active = ACTIVE_PARENT[route.page] ?? route.page;
   // report status shown where the work happens: admins see reports awaiting review, trainers see returned reports
   const navBadge: Record<string, number> = user.role === 'admin'
-    ? { reports: raw.reports.filter((r) => r.status === 'Submitted' || r.status === 'Under Review').length }
+    ? { reports: raw.reports.filter((r) => myReview(r, user.id).awaiting).length }
     : user.role === 'trainer' ? { 't-report': raw.reports.filter((r) => r.trainerId === user.trainerId && r.status === 'Correction Requested').length } : {};
   const groups = [...new Set(nav.map((n) => n.group ?? ''))];
 

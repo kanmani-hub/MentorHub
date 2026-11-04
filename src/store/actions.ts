@@ -1,115 +1,173 @@
 import { useApp } from './AppStore';
-import { buildSnapshot, isAfterDeadline, reportFor, trainerName } from './selectors';
-import type { DailyReport } from '../types';
+import { buildSnapshot, isAfterDeadline, reportFor, trainerName, validateReport } from './selectors';
+import { activeAdmins, reviewsFor, statusAfter, versionReviewerIds } from './reviews';
+import type { DailyReport, ReviewAction } from '../types';
 import { fmtDate, nowTs, uid } from '../utils';
+
+export const SUBMIT_SUCCESS = 'Consolidated Daily Report submitted successfully. Your selected Admin Reviewer(s) have been notified.';
+export const NO_REVIEWER = 'Please select at least one Admin Reviewer before submitting the report.';
 
 export function useReportActions() {
   const { raw, user, mutate, notify, toast } = useApp();
   const actor = user?.name ?? 'System';
   const trainerUserId = (tid: string) => raw.users.find((u) => u.trainerId === tid)?.id;
-  const reviewers = () => raw.users.filter((u) => u.role === 'admin' && u.active && u.canReview).map((u) => u.id);
 
   const ensure = (d: typeof raw, tid: string, date: string): DailyReport => {
     let r = d.reports.find((x) => x.trainerId === tid && x.date === date);
     if (!r) {
-      r = { id: uid('rep'), trainerId: tid, date, status: 'Draft', draftRemarks: '', versions: [], events: [], adminRemarks: [] };
+      r = { id: uid('rep'), trainerId: tid, date, status: 'Draft', draftRemarks: '', selectedReviewerIds: [], versions: [], reviewHistory: [], events: [], adminRemarks: [] };
       d.reports.push(r);
     }
     return r;
   };
+  /** keep only IDs of active admins, in a stable order */
+  const cleanReviewers = (ids: string[]) => { const ok = new Set(activeAdmins(raw).map((u) => u.id)); return [...new Set(ids)].filter((id) => ok.has(id)); };
+
+  /**
+   * A decision is allowed only for an active admin who is a selected reviewer of the latest version, has not already
+   * decided on that version, while the report is open. The production backend must apply the same rule.
+   */
+  const guardDecision = (r: DailyReport | undefined) => {
+    if (!r || !r.versions.length) { toast('Report not found.', 'error'); return false; }
+    if (user?.role !== 'admin' || user.active === false) { toast('Only admins can review reports.', 'error'); return false; }
+    if (!versionReviewerIds(r).includes(user.id)) { toast('You are not a selected reviewer for this report.', 'error'); return false; }
+    if (r.status !== 'Submitted' && r.status !== 'Under Review') { toast(`This report is ${r.status.toLowerCase()} and can no longer be reviewed.`, 'error'); return false; }
+    if (reviewsFor(r).some((x) => x.reviewerId === user.id)) { toast(`You have already reviewed version ${r.versions.length} of this report.`, 'error'); return false; }
+    return true;
+  };
+
+  const decide = (id: string, action: ReviewAction, remarksIn: string) => {
+    const r = raw.reports.find((x) => x.id === id);
+    if (!guardDecision(r)) return false;
+    const remarks = remarksIn.trim();
+    if (action === 'Correction Requested' && !remarks) { toast('Enter what needs to be corrected.', 'error'); return false; }
+    if (action === 'Rejected' && !remarks) { toast('Enter the reason for rejecting this report.', 'error'); return false; }
+    const version = r!.versions.length;
+    let next = r!.status;
+    let applied = false;
+    mutate((d) => {
+      const x = d.reports.find((y) => y.id === id)!;
+      x.reviewHistory = x.reviewHistory ?? [];
+      // re-check on the stored copy so a double click or a stale screen cannot record a second decision
+      if (x.reviewHistory.some((h) => h.reportVersion === version && h.reviewerId === user!.id) || (x.status !== 'Submitted' && x.status !== 'Under Review')) return;
+      const at = nowTs();
+      x.reviewHistory.push({ reviewerId: user!.id, reviewerName: user!.name, action, remarks, reviewedAt: at, reportVersion: version });
+      const approvals = new Set(x.reviewHistory.filter((h) => h.reportVersion === version && h.action === 'Approved').map((h) => h.reviewerId));
+      const total = versionReviewerIds(x).length;
+      next = statusAfter(x, action, approvals.size);
+      x.status = next;
+      if (next === 'Approved') x.approvedAt = at;
+      const label = action === 'Approved' ? (next === 'Approved' ? 'Approved' : `Approved (${approvals.size} of ${total})`) : action === 'Correction Requested' ? 'Correction requested' : 'Rejected';
+      x.events.push({ at, by: actor, action: label, reason: remarks || undefined });
+      if (remarks) x.adminRemarks.push({ at, by: actor, text: remarks });
+      applied = true;
+    }, { action: action === 'Approved' ? 'Report approved by reviewer' : action === 'Rejected' ? 'Report rejected' : 'Correction requested', entity: `${trainerName(raw, r!.trainerId)} · ${fmtDate(r!.date)} · v${version}`, prev: r!.status, next: action, reason: remarks });
+    if (!applied) { toast('This decision was already recorded.', 'error'); return false; }
+    const tu = trainerUserId(r!.trainerId);
+    if (action === 'Approved') {
+      const done = next === 'Approved';
+      if (tu && done) notify([tu], { type: 'approved', title: 'Report approved', body: `All selected reviewers approved your report for ${fmtDate(r!.date)}.`, link: { page: 't-history' } });
+      toast(done ? 'Report approved. All selected reviewers have approved it.' : 'Your approval is recorded. Waiting for the other selected reviewers.');
+    } else if (action === 'Correction Requested') {
+      if (tu) notify([tu], { type: 'correction', title: 'Correction requested', body: `${actor}: ${remarks}`, link: { page: 't-report', id: r!.date } });
+      toast('Correction requested. The trainer can now edit and resubmit.', 'info');
+    } else {
+      if (tu) notify([tu], { type: 'rejected', title: 'Report rejected', body: `${actor}: ${remarks}`, link: { page: 't-history' } });
+      toast('Report rejected. History preserved.', 'warning');
+    }
+    return true;
+  };
 
   return {
-    saveDraft(tid: string, date: string, remarks: string, exception?: string) {
+    /** saves remarks, exception and the chosen reviewers; reviewers can change only while Draft or Correction Requested */
+    saveDraft(tid: string, date: string, remarks: string, exception?: string, reviewerIds?: string[]) {
+      if (user?.role !== 'trainer' || user.trainerId !== tid) { toast('You can only edit your own report.', 'error'); return false; }
+      const cur = reportFor(raw, tid, date);
+      if (cur && cur.status !== 'Draft' && cur.status !== 'Correction Requested') { toast('This report is submitted. Changes go through a correction request.', 'error'); return false; }
       mutate((d) => {
         const r = ensure(d, tid, date);
         r.draftRemarks = remarks;
         if (exception !== undefined) r.exception = exception || undefined;
-        if (r.status === 'Draft') r.events.push({ at: nowTs(), by: actor, action: 'Draft saved' });
-        else r.events.push({ at: nowTs(), by: actor, action: 'Correction draft saved' });
+        if (reviewerIds) r.selectedReviewerIds = cleanReviewers(reviewerIds);
+        r.events.push({ at: nowTs(), by: actor, action: r.status === 'Draft' ? 'Draft saved' : 'Correction draft saved' });
       });
       toast('Draft saved');
+      return true;
     },
-    submit(tid: string, date: string, remarks: string, exception?: string) {
+    submit(tid: string, date: string, remarks: string, exception: string | undefined, reviewerIdsIn: string[]) {
       const existing = reportFor(raw, tid, date);
       // one consolidated report per trainer per working day: block duplicate submissions
       if (existing && ['Submitted', 'Under Review', 'Approved', 'Rejected'].includes(existing.status)) {
         toast(`A report for ${fmtDate(date)} is already ${existing.status.toLowerCase()}. Corrections go through a correction request.`, 'error');
-        return;
+        return false;
       }
-      if (user?.role !== 'trainer' || user.trainerId !== tid) { toast('You can only submit your own report.', 'error'); return; }
+      if (user?.role !== 'trainer' || user.trainerId !== tid) { toast('You can only submit your own report.', 'error'); return false; }
+      const reviewerIds = cleanReviewers(reviewerIdsIn);
+      if (!reviewerIds.length) { toast(NO_REVIEWER, 'error'); return false; }
+      // the same checks as the screen, repeated here so state actions cannot skip them
+      const issues = validateReport(raw, tid, date);
+      const ex = (exception ?? '').trim();
+      if (issues.length && !(raw.settings.allowException && ex.length >= 10)) { toast(`${issues.length} required item(s) are missing. Complete them before submitting.`, 'error'); return false; }
       const snapBase = buildSnapshot(raw, tid, date);
-      const snapshot = { ...snapBase, remarks, exception: exception || undefined };
+      const snapshot = { ...snapBase, remarks, exception: issues.length ? ex : undefined };
       const late = isAfterDeadline(raw, date);
       const version = (existing?.versions.length ?? 0) + 1;
       const resubmit = version > 1;
       const reportId = existing?.id ?? uid('rep');
+      const batchReportIds = raw.batchReports.filter((b) => b.trainerId === tid && b.date === date && snapshot.batches.some((x) => x.batchId === b.batchId)).map((b) => b.id);
+      const at = nowTs();
       mutate((d) => {
         let r = d.reports.find((x) => x.trainerId === tid && x.date === date);
         if (!r) { r = { id: reportId, trainerId: tid, date, status: 'Draft', draftRemarks: '', versions: [], events: [], adminRemarks: [] }; d.reports.push(r); }
         r.draftRemarks = remarks;
-        r.exception = exception || undefined;
-        r.versions.push({ version, submittedAt: nowTs(), late, snapshot });
+        r.exception = snapshot.exception;
+        r.selectedReviewerIds = reviewerIds;
+        r.batchReportIds = batchReportIds;
+        r.reviewHistory = r.reviewHistory ?? [];
+        r.versions.push({ version, submittedAt: at, late, snapshot, reviewerIds: [...reviewerIds], batchReportIds });
+        r.currentVersion = version;
+        r.submittedAt = at;
+        r.approvedAt = undefined;
         r.status = 'Submitted';
-        r.events.push({ at: nowTs(), by: actor, action: `${resubmit ? 'Resubmitted' : 'Submitted'} v${version}${late ? ' (late)' : ''}`, reason: exception ? `Exception: ${exception}` : undefined });
-      }, { action: resubmit ? 'Report resubmitted' : 'Report submitted', entity: `Daily report ${fmtDate(date)} · ${trainerName(raw, tid)}`, prev: existing?.status ?? 'Draft', next: `Submitted v${version}`, reason: exception ?? '' });
-      notify(reviewers(), {
+        r.events.push({ at, by: actor, action: `${resubmit ? 'Resubmitted' : 'Submitted'} v${version}${late ? ' (late)' : ''}`, reason: snapshot.exception ? `Exception: ${snapshot.exception}` : undefined });
+      }, { action: resubmit ? 'Report resubmitted' : 'Report submitted', entity: `Daily report ${fmtDate(date)} · ${trainerName(raw, tid)}`, prev: existing?.status ?? 'Draft', next: `Submitted v${version} to ${reviewerIds.length} reviewer(s)`, reason: snapshot.exception ?? '' });
+      // review task for each selected admin: shown in their "Reports Assigned to Me" and dashboard counters
+      notify(reviewerIds, {
         type: 'report-submitted',
-        title: resubmit ? 'Corrected report resubmitted' : 'Daily report submitted',
+        title: resubmit ? 'Corrected report resubmitted for your review' : 'Daily report assigned to you for review',
         body: `${trainerName(raw, tid)} ${resubmit ? 'resubmitted' : 'submitted'} the report for ${fmtDate(date)} · ${snapshot.batches.length} batch${snapshot.batches.length === 1 ? '' : 'es'}${late ? ' · after the deadline' : ''}.`,
         link: { page: 'report', id: reportId },
       });
-      toast(`Report ${resubmit ? 'resubmitted' : 'submitted'}. ${reviewers().length} reviewing admins notified.`);
+      toast(SUBMIT_SUCCESS);
+      return true;
     },
+    /** first open by a selected reviewer moves Submitted → Under Review */
     openForReview(id: string) {
       const r = raw.reports.find((x) => x.id === id);
-      if (!r || r.status !== 'Submitted' || user?.role !== 'admin') return;
+      if (!r || r.status !== 'Submitted' || user?.role !== 'admin' || !versionReviewerIds(r).includes(user.id)) return;
       mutate((d) => {
         const x = d.reports.find((y) => y.id === id)!;
+        if (x.status !== 'Submitted') return;
         x.status = 'Under Review';
         x.events.push({ at: nowTs(), by: actor, action: 'Opened for review' });
       });
     },
-    approve(id: string, remark: string) {
-      const r = raw.reports.find((x) => x.id === id)!;
-      mutate((d) => {
-        const x = d.reports.find((y) => y.id === id)!;
-        x.status = 'Approved';
-        x.events.push({ at: nowTs(), by: actor, action: 'Approved', reason: remark || undefined });
-        if (remark) x.adminRemarks.push({ at: nowTs(), by: actor, text: remark });
-      }, { action: 'Report approved', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Approved', reason: remark });
-      const tu = trainerUserId(r.trainerId);
-      if (tu) notify([tu], { type: 'approved', title: 'Report approved', body: `${actor} approved your report for ${fmtDate(r.date)}.`, link: { page: 't-history' } });
-      toast('Report approved and trainer notified');
-    },
-    requestCorrection(id: string, reason: string) {
-      const r = raw.reports.find((x) => x.id === id)!;
-      mutate((d) => {
-        const x = d.reports.find((y) => y.id === id)!;
-        x.status = 'Correction Requested';
-        x.events.push({ at: nowTs(), by: actor, action: 'Correction requested', reason });
-      }, { action: 'Correction requested', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Correction Requested', reason });
-      const tu = trainerUserId(r.trainerId);
-      if (tu) notify([tu], { type: 'correction', title: 'Correction requested', body: `${actor}: ${reason}`, link: { page: 't-report', id: r.date } });
-      toast('Correction requested. The trainer can now edit and resubmit.', 'info');
-    },
-    reject(id: string, reason: string) {
-      const r = raw.reports.find((x) => x.id === id)!;
-      mutate((d) => {
-        const x = d.reports.find((y) => y.id === id)!;
-        x.status = 'Rejected';
-        x.events.push({ at: nowTs(), by: actor, action: 'Rejected', reason });
-      }, { action: 'Report rejected', entity: `${trainerName(raw, r.trainerId)} · ${fmtDate(r.date)}`, prev: r.status, next: 'Rejected', reason });
-      const tu = trainerUserId(r.trainerId);
-      if (tu) notify([tu], { type: 'rejected', title: 'Report rejected', body: `${actor}: ${reason}`, link: { page: 't-history' } });
-      toast('Report rejected. History preserved.', 'warning');
-    },
+    approve: (id: string, remark: string) => decide(id, 'Approved', remark),
+    requestCorrection: (id: string, reason: string) => decide(id, 'Correction Requested', reason),
+    reject: (id: string, reason: string) => decide(id, 'Rejected', reason),
+    /** remarks without a decision: selected reviewers only */
     addRemark(id: string, text: string) {
+      text = text.trim();
+      const r = raw.reports.find((x) => x.id === id);
+      if (!r || !text) return false;
+      if (user?.role !== 'admin' || !versionReviewerIds(r).includes(user.id)) { toast('Only the selected reviewers can add remarks to this report.', 'error'); return false; }
       mutate((d) => {
         const x = d.reports.find((y) => y.id === id)!;
         x.adminRemarks.push({ at: nowTs(), by: actor, text });
         x.events.push({ at: nowTs(), by: actor, action: 'Remark added', reason: text });
       });
       toast('Remark added');
+      return true;
     },
   };
 }
@@ -131,7 +189,7 @@ export interface BatchReportForm {
 }
 
 /** shared validation — used by the form and re-run inside the submit action */
-export const validateBatchForm = (s: AppState, batchId: string, f: BatchReportForm) => {
+export const validateBatchForm = (s: AppState, batchId: string, f: BatchReportForm, date?: string) => {
   const e: Record<string, string> = {};
   const studs = s.students.filter((x) => x.batchId === batchId && x.status === 'Active');
   const topicMissing = Object.values(f.topics).filter((t) => !t.status).length;
@@ -147,7 +205,7 @@ export const validateBatchForm = (s: AppState, batchId: string, f: BatchReportFo
   if (!f.practicals.some((p) => p.text.trim())) e.practicals = 'Add at least one practical activity.';
   if (f.assignments.some((a) => !a.name.trim() || !a.deadline)) e.assignments = 'Each assignment needs a name and a deadline.';
   if (f.projects.some((p) => !p.name.trim())) e.projects = 'Each project entry needs a project name.';
-  if (s.settings.requireVoiceNote && !f.voiceNames.some((v) => v.text.trim())) e.voiceNames = 'Add at least one WhatsApp voice note name.';
+  if (s.settings.requireVoiceNote && date && !(s.waUpdates.find((w) => w.batchId === batchId && w.date === date)?.studentIds.length)) e.voiceNames = 'Add at least one student voice note (Student Voice Notes page).';
   return e;
 };
 
@@ -162,7 +220,7 @@ export function useBatchReportActions() {
     if (!classBatchesOn(raw, tid, date).some((x) => x.id === batchId)) { toast('This batch has no class on that date.', 'error'); return false; }
     if (isDayLocked(raw, tid, date)) { toast('This day\'s consolidated report is locked.', 'error'); return false; }
     if (submit && !lessonPlan(raw, b, date).selected) { toast(`Select the lesson day taught in ${b.name} (Today's Lesson) before submitting.`, 'error'); return false; }
-    if (submit && Object.keys(validateBatchForm(raw, batchId, f)).length) { toast('Complete the highlighted sections first.', 'error'); return false; }
+    if (submit && Object.keys(validateBatchForm(raw, batchId, f, date)).length) { toast('Complete the highlighted sections first.', 'error'); return false; }
     const plan = lessonPlan(raw, b, date);
     const topicByKey = new Map([...plan.carryOver.map((c) => c.topic), ...plan.topics].map((t) => [t.key, t]));
     const prev = raw.batchReports.find((r) => r.trainerId === tid && r.batchId === batchId && r.date === date);
@@ -415,12 +473,12 @@ export function useLessonDay() {
 }
 const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
-/** Save who sent WhatsApp updates for a batch + class date (replaces that day's selection until the report is submitted). */
+/** Save student voice notes for a batch + class date (replaces that day's list until the report is submitted). */
 export function useWhatsAppUpdates() {
   const { raw, user, mutate, toast } = useApp();
-  return (batchId: string, date: string, studentIds: string[], unmatched: string[], source: 'paste' | 'excel' | 'csv' | 'txt' | 'manual', fileName?: string) => {
+  return (batchId: string, date: string, studentIds: string[], unmatched: string[], source: 'paste' | 'excel' | 'csv' | 'txt' | 'manual', fileName?: string, notes: Record<string, { title: string; submittedAt?: string }> = {}) => {
     const b = raw.batches.find((x) => x.id === batchId);
-    if (user?.role !== 'trainer' || !b || b.trainerId !== user.trainerId) { toast('You can only save updates for your own batches.', 'error'); return false; }
+    if (user?.role !== 'trainer' || !b || b.trainerId !== user.trainerId) { toast('You can only save voice notes for your own batches.', 'error'); return false; }
     if (date > todayLocal()) { toast('Choose today or an earlier class date.', 'error'); return false; }
     if (isDayLocked(raw, user.trainerId!, date)) { toast('The daily report for this date is submitted, so the selection is locked.', 'error'); return false; }
     const allowed = new Set(raw.students.filter((st) => st.batchId === batchId).map((st) => st.id));
@@ -430,15 +488,15 @@ export function useWhatsAppUpdates() {
     mutate((d) => {
       let w = d.waUpdates.find((x) => x.batchId === batchId && x.date === date);
       if (!w) { w = { id: uid('wa'), trainerId: user.trainerId!, batchId, date, studentIds: [], unmatched: [], source, savedAt: nowTs(), savedBy: user.name, history: [] }; d.waUpdates.push(w); }
-      const defaultVoiceTitles = ['Doubt clarification', 'Topic explanation request', 'Practical exercise feedback', 'Assignment clarification'];
-      w.voiceNotes = ids.map((id, idx) => {
+      w.voiceNotes = ids.map((id) => {
         const existing = prev?.voiceNotes?.find((v) => v.studentId === id);
-        return existing ?? { studentId: id, title: defaultVoiceTitles[idx % defaultVoiceTitles.length], submittedAt: nowTs() };
+        const n = notes[id];
+        return { studentId: id, title: (n?.title ?? existing?.title ?? '').trim(), submittedAt: n?.submittedAt || existing?.submittedAt || date };
       });
       w.studentIds = ids; w.unmatched = [...new Set(unmatched)]; w.source = source; w.fileName = fileName; w.savedAt = nowTs(); w.savedBy = user.name; w.trainerId = user.trainerId!;
       w.history.push({ at: nowTs(), by: user.name, count: ids.length });
-    }, { action: prev ? 'WhatsApp updates edited' : 'WhatsApp updates saved', entity: `${b.name} · ${fmtDate(date)}`, prev: prev ? `${prev.studentIds.length} students` : '—', next: `${ids.length} students`, reason: fileName ?? source });
-    toast(`${ids.length} student${ids.length === 1 ? '' : 's'} saved for ${b.name} on ${fmtDate(date)}`);
+    }, { action: prev ? 'Student voice notes edited' : 'Student voice notes saved', entity: `${b.name} · ${fmtDate(date)}`, prev: prev ? `${prev.studentIds.length} students` : '—', next: `${ids.length} students`, reason: fileName ?? source });
+    toast(`${ids.length} student voice note${ids.length === 1 ? '' : 's'} saved for ${b.name} on ${fmtDate(date)}`);
     return true;
   };
 }
